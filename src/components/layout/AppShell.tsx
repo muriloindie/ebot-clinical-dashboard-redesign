@@ -4,25 +4,33 @@ import { useState } from "react";
 import { DashboardPage } from "@/components/dashboard/DashboardPage";
 import { ThemeProvider } from "@/components/theme/ThemeProvider";
 import { EmptyState } from "@/components/ui/EmptyState";
-import type { MenuItemId } from "@/data/sidebarNavigation";
-import { Sidebar } from "./Sidebar";
+import { findSidebarItemByPath, resolveSidebarPath } from "@/data/sidebarNavigation";
+import { SidebarShell } from "./SidebarShell";
 import { Topbar } from "./Topbar";
 
 export function AppShell() {
-  const [activeItem, setActiveItem] = useState<MenuItemId>("dashboard");
+  const [activePath, setActivePath] = useState("/dashboard");
+  const activeItem = findSidebarItemByPath(activePath);
+
+  function handleNavigate(target: string) {
+    setActivePath(resolveSidebarPath(target));
+  }
 
   return (
     <ThemeProvider>
       <main className="clinical-canvas min-h-screen">
-        <div className="flex min-h-screen">
-          <Sidebar activeItem={activeItem} onChange={setActiveItem} />
-          <section className="min-w-0 flex-1 pb-24 md:pb-0">
-            <Topbar onNavigate={setActiveItem} />
+        <SidebarShell activePath={activePath} onNavigate={handleNavigate}>
+          <div className="min-h-screen">
+            <Topbar onNavigate={handleNavigate} />
             <div className="mx-auto max-w-[1740px] px-4 py-5 lg:px-6 lg:py-7">
-              {activeItem === "dashboard" ? <DashboardPage /> : <EmptyState />}
+              {activePath === "/dashboard" ? (
+                <DashboardPage />
+              ) : (
+                <EmptyState title={activeItem ? `${activeItem.label} em desenvolvimento` : "Conteúdo em desenvolvimento"} />
+              )}
             </div>
-          </section>
-        </div>
+          </div>
+        </SidebarShell>
       </main>
     </ThemeProvider>
   );

@@ -37,7 +37,7 @@ export function AIStatusMenu({ onNavigate }: AIStatusMenuProps) {
   }, [open]);
 
   function navigateToSettings() {
-    onNavigate?.("configuracoes");
+    onNavigate?.("open-ai");
     setOpen(false);
   }
 
