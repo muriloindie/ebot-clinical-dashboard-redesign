@@ -20,23 +20,38 @@ import {
 } from "lucide-react";
 import { initialTasks, type Task, type TaskStatus } from "@/data/workManagementMock";
 import { readLocalCache, writeLocalCache } from "@/lib/localCache";
+import { listKanbanTags } from "@/lib/tags/tagsService";
 import { Button } from "@/components/ui/Button";
 import { ConfirmationDialog } from "@/components/ui/ConfirmationDialog";
 import { Modal } from "@/components/ui/Modal";
 import { ModalField, ModalSelect, ModalTextarea } from "@/components/ui/ModalField";
-import { FilterSelect, PageHeader, SearchField, StatePanel, StatusBadge } from "@/components/ui/Week1Primitives";
+import { FilterSelect, PageHeader, SearchField, StatePanel } from "@/components/ui/Week1Primitives";
 import { cn } from "@/lib/cn";
 
 const CACHE_KEY = "ebot-week2-kanban-tasks";
 const ALL = "Todos";
 const statuses: TaskStatus[] = ["Novo", "Em atendimento", "Aguardando", "Agendado", "Em acompanhamento", "Concluído"];
 
-const columns: { ids: TaskStatus[]; title: string; icon: typeof ListTodo; tone: "blue" | "orange" | "green" }[] = [
-  { ids: ["Novo"], title: "Novas", icon: CircleDashed, tone: "orange" },
-  { ids: ["Em atendimento", "Aguardando", "Agendado"], title: "Em execução", icon: ListTodo, tone: "blue" },
-  { ids: ["Em acompanhamento"], title: "Acompanhamento", icon: CircleDot, tone: "blue" },
-  { ids: ["Concluído"], title: "Encerradas", icon: CheckCircle2, tone: "green" }
+const columns: { ids: TaskStatus[]; title: string; subtitle: string; icon: typeof ListTodo; color: string }[] = [
+  { ids: ["Novo"], title: "Novas", subtitle: "Entraram na fila agora", icon: CircleDashed, color: "#F19D18" },
+  { ids: ["Em atendimento", "Aguardando", "Agendado"], title: "Em execução", subtitle: "Em andamento com a equipe", icon: ListTodo, color: "#3A9DCA" },
+  { ids: ["Em acompanhamento"], title: "Acompanhamento", subtitle: "Monitoramento pós-consulta", icon: CircleDot, color: "#30A3A4" },
+  { ids: ["Concluído"], title: "Encerradas", subtitle: "Finalizadas recentemente", icon: CheckCircle2, color: "#87A630" }
 ];
+
+function withAlpha(hex: string, alpha: string) {
+  const value = hex.replace("#", "");
+  return value.length === 6 ? `#${value}${alpha}` : hex;
+}
+
+function accentInk(hex: string) {
+  const value = hex.replace("#", "");
+  if (value.length !== 6) return hex;
+  const channels = [0, 2, 4].map((index) => Number.parseInt(value.slice(index, index + 2), 16));
+  const luminance = (0.2126 * channels[0] + 0.7152 * channels[1] + 0.0722 * channels[2]) / 255;
+  const factor = luminance > 0.52 ? 0.62 : 1;
+  return `rgb(${channels.map((channel) => Math.round(channel * factor)).join(", ")})`;
+}
 
 type ViewMode = "board" | "list" | "agenda";
 type PendingUndo = { tasks: Task[]; label: string };
@@ -48,15 +63,16 @@ function nextTaskId(tasks: Task[]) {
   return `TK-${String(Math.max(-1, ...numbers) + 1).padStart(2, "0")}`;
 }
 
-function taskStatusTone(status: TaskStatus): "blue" | "green" | "orange" | "neutral" {
-  if (status === "Concluído") return "green";
-  if (status === "Novo") return "orange";
-  if (status === "Em acompanhamento") return "blue";
-  return "neutral";
+function taskPriorityMeta(priority: Task["priority"]): { dot: string; label: string } {
+  if (priority === "Alta") return { dot: "#E2574C", label: "Alta" };
+  if (priority === "Média") return { dot: "#F19D18", label: "Média" };
+  return { dot: "#9AA8A4", label: "Baixa" };
 }
 
 function TaskCard({
   task,
+  variant = "card",
+  accent = "#3A9DCA",
   onMove,
   onDragStart,
   onDragEnd,
@@ -65,6 +81,8 @@ function TaskCard({
   onDelete
 }: {
   task: Task;
+  variant?: "card" | "notebook";
+  accent?: string;
   onMove: (id: string, status: TaskStatus) => void;
   onDragStart: (event: React.DragEvent<HTMLElement>, task: Task) => void;
   onDragEnd: () => void;
@@ -81,6 +99,57 @@ function TaskCard({
     onMove(task.id, statuses[nextIndex]);
   }
 
+  const done = task.status === "Concluído";
+  const ink = accentInk(accent);
+  const priority = taskPriorityMeta(task.priority);
+
+  if (variant === "notebook") {
+    return (
+      <article
+        draggable
+        tabIndex={0}
+        onDragStart={(event) => onDragStart(event, task)}
+        onDragEnd={onDragEnd}
+        onKeyDown={handleKeyDown}
+        aria-label={`Tarefa ${task.title}, status ${task.status}`}
+        className="group relative flex items-start gap-3.5 rounded-r-2xl border-b border-clinical-border/[0.12] bg-clinical-surface/90 py-3.5 pl-5 pr-3 transition duration-200 hover:bg-clinical-blue/[0.04] focus:outline-none focus:ring-2 focus:ring-inset focus:ring-clinical-blue/30"
+      >
+        <span aria-hidden="true" className="absolute inset-y-2 left-2 w-px bg-clinical-red/25" />
+        <button
+          type="button"
+          onClick={() => onToggleComplete(task)}
+          role="checkbox"
+          aria-checked={done}
+          aria-label={done ? `Reabrir ${task.title}` : `Concluir ${task.title}`}
+          title={done ? "Reabrir tarefa" : "Concluir tarefa"}
+          className={cn(
+            "mt-0.5 flex size-6 shrink-0 items-center justify-center rounded-full border-2 transition",
+            done
+              ? "border-clinical-green bg-clinical-green text-white"
+              : "border-clinical-border/[0.35] bg-clinical-surface text-transparent hover:border-clinical-green hover:text-clinical-green/40"
+          )}
+        >
+          <Check className="size-3.5" strokeWidth={3.5} />
+        </button>
+        <div className="min-w-0 flex-1">
+          <h3 className={cn("text-[14px] font-extrabold leading-5 text-clinical-dark", done && "text-clinical-muted line-through decoration-clinical-green/60")}>{task.title}</h3>
+          {task.description ? <p className="mt-0.5 line-clamp-1 text-[12px] leading-5 text-clinical-muted">{task.description}</p> : null}
+          <p className="mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px] font-bold text-clinical-muted">
+            <span className="inline-flex items-center gap-1"><CalendarClock className="size-3" />{task.due}</span>
+            <span className="inline-flex items-center gap-1"><UserRound className="size-3" />{task.responsible}</span>
+            <span className="rounded-full bg-clinical-surfaceMuted px-2 py-0.5">{task.sector}</span>
+            {task.tag ? <span className="text-clinical-green">#{task.tag}</span> : null}
+            {task.patient ? <span className="text-clinical-blueText">{task.patient}</span> : null}
+          </p>
+        </div>
+        <span className="flex shrink-0 items-center gap-0.5 opacity-0 transition group-hover:opacity-100 group-focus-within:opacity-100">
+          <button type="button" onClick={() => onEdit(task)} aria-label={`Editar ${task.title}`} title="Editar" className="flex size-8 items-center justify-center rounded-xl text-clinical-muted transition hover:bg-clinical-blue/10 hover:text-clinical-blue"><Pencil className="size-3.5" /></button>
+          <button type="button" onClick={() => onDelete(task)} aria-label={`Excluir ${task.title}`} title="Excluir" className="flex size-8 items-center justify-center rounded-xl text-clinical-muted transition hover:bg-red-500/10 hover:text-red-500"><Trash2 className="size-3.5" /></button>
+        </span>
+      </article>
+    );
+  }
+
   return (
     <article
       draggable
@@ -89,36 +158,37 @@ function TaskCard({
       onDragEnd={onDragEnd}
       onKeyDown={handleKeyDown}
       aria-label={`Tarefa ${task.title}, status ${task.status}`}
-      className="group rounded-2xl border border-clinical-border/[0.12] bg-clinical-surface/90 p-4 shadow-sm transition duration-200 hover:-translate-y-0.5 hover:border-clinical-blue/25 focus:outline-none focus:ring-2 focus:ring-clinical-blue/30"
+      style={{ borderColor: withAlpha(accent, "30"), backgroundColor: withAlpha(accent, "0D") }}
+      className="group rounded-2xl border p-3.5 shadow-sm transition duration-200 hover:-translate-y-0.5 hover:shadow-card focus:outline-none focus:ring-2 focus:ring-clinical-blue/30"
     >
-      <div className="flex items-start justify-between gap-2">
-        <div className="flex min-w-0 flex-wrap items-center gap-1.5">
-          <StatusBadge label={task.priority} tone={task.priority === "Alta" ? "red" : task.priority === "Média" ? "orange" : "neutral"} />
-          <StatusBadge label={task.status} tone={taskStatusTone(task.status)} />
-        </div>
-        <span className="shrink-0 text-[11px] font-bold text-clinical-muted">{task.id}</span>
+      <div className="flex items-center justify-between gap-2">
+        <span className="inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-[10px] font-extrabold uppercase tracking-wide" style={{ backgroundColor: withAlpha(accent, "18"), color: ink }}>
+          <span className="size-1.5 rounded-full" style={{ backgroundColor: priority.dot }} aria-hidden="true" />
+          {priority.label}
+        </span>
+        <span className="shrink-0 font-mono text-[10px] font-bold text-clinical-muted">{task.id}</span>
       </div>
-      <h3 className="mt-3 text-sm font-extrabold leading-5 text-clinical-dark">{task.title}</h3>
-      <p className="mt-1.5 text-xs leading-5 text-clinical-muted">{task.description}</p>
-      {task.patient ? <p className="mt-3 flex items-center gap-1.5 text-xs font-bold text-clinical-blueText"><UserRound className="size-3.5" />{task.patient}</p> : null}
-      <div className="mt-4 flex flex-wrap gap-1.5">
-        <span className="inline-flex items-center gap-1 rounded-full bg-clinical-blue/[0.08] px-2 py-1 text-[11px] font-bold text-clinical-blueText"><UserRound className="size-3" />{task.responsible}</span>
-        <span className="rounded-full bg-clinical-surfaceMuted px-2 py-1 text-[11px] font-bold text-clinical-muted">{task.sector}</span>
-        {task.tag ? <span className="rounded-full bg-clinical-green/[0.09] px-2 py-1 text-[11px] font-bold text-clinical-green">#{task.tag}</span> : null}
+      <h3 className={cn("mt-2 text-[14px] font-extrabold leading-5 text-clinical-dark", done && "text-clinical-muted line-through decoration-clinical-green/60")}>{task.title}</h3>
+      {task.description ? <p className="mt-1 line-clamp-2 text-[12px] leading-5 text-clinical-muted">{task.description}</p> : null}
+      {task.patient ? <p className="mt-2 flex items-center gap-1.5 text-[12px] font-bold" style={{ color: ink }}><UserRound className="size-3.5 shrink-0" /><span className="truncate">{task.patient}</span></p> : null}
+      <div className="mt-2.5 flex flex-wrap gap-1.5">
+        <span className="inline-flex items-center gap-1 rounded-full px-2 py-1 text-[11px] font-bold" style={{ backgroundColor: withAlpha(accent, "18"), color: ink }}><UserRound className="size-3" />{task.responsible}</span>
+        <span className="rounded-full px-2 py-1 text-[11px] font-bold" style={{ backgroundColor: withAlpha(accent, "18"), color: ink }}>{task.sector}</span>
+        {task.tag ? <span className="rounded-full px-2 py-1 text-[11px] font-bold" style={{ backgroundColor: withAlpha(accent, "18"), color: ink }}>#{task.tag}</span> : null}
       </div>
-      <div className="mt-4 flex items-center justify-between gap-2 border-t border-clinical-border/[0.10] pt-3">
-        <span className="flex min-w-0 items-center gap-1.5 text-[11px] font-bold text-clinical-muted"><CalendarClock className="size-3.5 shrink-0" />{task.due}</span>
-        <select aria-label={`Mover ${task.title}`} value={task.status} onChange={(event) => onMove(task.id, event.target.value as TaskStatus)} className="max-w-[55%] rounded-lg border-0 bg-transparent text-right text-[11px] font-extrabold text-clinical-blueText outline-none">
-          {statuses.map((status) => <option key={status}>{status}</option>)}
-        </select>
+      <div className="mt-3 flex items-center justify-between gap-2 border-t pt-2.5" style={{ borderColor: withAlpha(accent, "22") }}>
+        <span className="flex min-w-0 items-center gap-1.5 text-[11px] font-bold text-clinical-muted"><CalendarClock className="size-3.5 shrink-0" /><span className="truncate">{task.due}</span></span>
+        <span className="flex shrink-0 items-center">
+          <button type="button" onClick={() => onToggleComplete(task)} aria-label={done ? `Reabrir ${task.title}` : `Concluir ${task.title}`} title={done ? "Reabrir" : "Concluir"} className={cn("flex size-8 items-center justify-center rounded-xl transition focus:outline-none focus:ring-2 focus:ring-clinical-green/40", done ? "text-clinical-green" : "text-clinical-muted hover:bg-clinical-green/10 hover:text-clinical-green")}>
+            <CheckCircle2 className="size-4" />
+          </button>
+          <button type="button" onClick={() => onEdit(task)} aria-label={`Editar ${task.title}`} title="Editar" className="flex size-8 items-center justify-center rounded-xl text-clinical-muted transition hover:bg-clinical-blue/10 hover:text-clinical-blue focus:outline-none focus:ring-2 focus:ring-clinical-blue/30"><Pencil className="size-3.5" /></button>
+          <button type="button" onClick={() => onDelete(task)} aria-label={`Excluir ${task.title}`} title="Excluir" className="flex size-8 items-center justify-center rounded-xl text-clinical-muted transition hover:bg-red-500/10 hover:text-red-500 focus:outline-none focus:ring-2 focus:ring-red-500/30"><Trash2 className="size-3.5" /></button>
+        </span>
       </div>
-      <div className="mt-3 flex flex-wrap justify-end gap-1.5">
-        <Button type="button" size="sm" variant="ghost" onClick={() => onEdit(task)} aria-label={`Editar ${task.title}`}><Pencil className="size-3.5" /><span className="hidden sm:inline">Editar</span></Button>
-        <Button type="button" size="sm" variant="secondary" onClick={() => onToggleComplete(task)} aria-label={task.status === "Concluído" ? `Reabrir ${task.title}` : `Concluir ${task.title}`}>
-          <CheckCircle2 className="size-3.5" />{task.status === "Concluído" ? "Reabrir" : "Concluir"}
-        </Button>
-        <button type="button" onClick={() => onDelete(task)} aria-label={`Excluir ${task.title}`} className="flex size-8 items-center justify-center rounded-xl text-clinical-muted transition hover:bg-red-500/10 hover:text-red-500 focus:outline-none focus:ring-2 focus:ring-red-500/30"><Trash2 className="size-3.5" /></button>
-      </div>
+      <select aria-label={`Mover ${task.title}`} value={task.status} onChange={(event) => onMove(task.id, event.target.value as TaskStatus)} className="mt-2 w-full rounded-xl border-0 bg-transparent py-1 text-[11px] font-extrabold outline-none" style={{ color: ink }}>
+        {statuses.map((status) => <option key={status}>{status}</option>)}
+      </select>
     </article>
   );
 }
@@ -130,6 +200,7 @@ export function TodoListPage() {
   const [priorityFilter, setPriorityFilter] = useState(ALL);
   const [sectorFilter, setSectorFilter] = useState(ALL);
   const [responsibleFilter, setResponsibleFilter] = useState(ALL);
+  const [tagFilter, setTagFilter] = useState(ALL);
   const [createOpen, setCreateOpen] = useState(false);
   const [editingTask, setEditingTask] = useState<Task | null>(null);
   const [taskToDelete, setTaskToDelete] = useState<Task | null>(null);
@@ -150,6 +221,7 @@ export function TodoListPage() {
 
   const sectors = Array.from(new Set(tasks.map((task) => task.sector)));
   const responsibles = Array.from(new Set(tasks.map((task) => task.responsible)));
+  const kanbanTags = useMemo(() => listKanbanTags(), []);
   const filtered = useMemo(() => tasks.filter((task) => {
     const normalizedSearch = search.trim().toLowerCase();
     const matchesSearch = !normalizedSearch || `${task.title} ${task.description} ${task.patient ?? ""} ${task.responsible} ${task.sector} ${task.tag}`.toLowerCase().includes(normalizedSearch);
@@ -157,8 +229,9 @@ export function TodoListPage() {
       && (statusFilter === ALL || task.status === statusFilter)
       && (priorityFilter === ALL || task.priority === priorityFilter)
       && (sectorFilter === ALL || task.sector === sectorFilter)
-      && (responsibleFilter === ALL || task.responsible === responsibleFilter);
-  }), [priorityFilter, responsibleFilter, search, sectorFilter, statusFilter, tasks]);
+      && (responsibleFilter === ALL || task.responsible === responsibleFilter)
+      && (tagFilter === ALL || task.tag.toLowerCase() === tagFilter.toLowerCase());
+  }), [priorityFilter, responsibleFilter, search, sectorFilter, statusFilter, tagFilter, tasks]);
   function persist(next: Task[]) {
     setTasks(next);
     writeLocalCache(CACHE_KEY, next);
@@ -183,6 +256,7 @@ export function TodoListPage() {
     setPriorityFilter(ALL);
     setSectorFilter(ALL);
     setResponsibleFilter(ALL);
+    setTagFilter(ALL);
   }
 
   function moveTask(id: string, status: TaskStatus) {
@@ -301,11 +375,12 @@ export function TodoListPage() {
             <button type="button" onClick={() => setView("agenda")} aria-label="Ver tarefas em agenda" aria-pressed={view === "agenda"} className={cn("flex size-9 items-center justify-center rounded-xl transition", view === "agenda" ? "bg-clinical-surface text-clinical-blue shadow-sm" : "text-clinical-muted hover:text-clinical-blue")}><CalendarClock className="size-4" /></button>
           </div>
         </div>
-        <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
+        <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-5">
           <FilterSelect label="Status" value={statusFilter} onChange={setStatusFilter} options={[ALL, ...statuses]} />
           <FilterSelect label="Prioridade" value={priorityFilter} onChange={setPriorityFilter} options={[ALL, "Alta", "Média", "Baixa"]} />
           <FilterSelect label="Setor" value={sectorFilter} onChange={setSectorFilter} options={[ALL, ...sectors]} />
           <FilterSelect label="Responsável" value={responsibleFilter} onChange={setResponsibleFilter} options={[ALL, ...responsibles]} />
+          <FilterSelect label="Tag do Kanban" value={tagFilter} onChange={setTagFilter} options={[ALL, ...kanbanTags.map((tag) => tag.name)]} />
         </div>
       </div>
 
@@ -320,10 +395,12 @@ export function TodoListPage() {
           action={<Button size="sm" variant="secondary" onClick={tasks.length ? clearFilters : openCreate}>{tasks.length ? "Limpar filtros" : "Criar tarefa"}</Button>}
         />
       ) : view === "board" ? (
-        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+        <div className="grid items-start gap-4 md:grid-cols-2 xl:grid-cols-4">
           {columns.map((column) => {
             const ColumnIcon = column.icon;
             const columnTasks = filtered.filter((task) => column.ids.includes(task.status));
+            const ink = accentInk(column.color);
+            const isOver = dropTarget !== null && column.ids.includes(dropTarget);
             return (
               <section
                 key={column.title}
@@ -331,29 +408,61 @@ export function TodoListPage() {
                 onDragLeave={() => setDropTarget(null)}
                 onDrop={(event) => { event.preventDefault(); handleDrop(column.ids[0]); }}
                 aria-label={`Coluna ${column.title}`}
-                className={cn("flex min-h-[460px] flex-col rounded-[24px] border p-3 transition duration-200", dropTarget && column.ids.includes(dropTarget) ? "border-clinical-blue/55 bg-clinical-blue/[0.10] shadow-glow" : "border-clinical-border/[0.14] bg-clinical-surface/65")}
+                style={{ borderColor: withAlpha(column.color, "55"), backgroundColor: isOver ? withAlpha("#3A9DCA", "18") : withAlpha(column.color, "08") }}
+                className="flex min-h-[460px] flex-col rounded-[26px] border p-3 transition duration-200"
               >
-                <div className="mb-3 flex items-start justify-between gap-2 px-1.5 pt-1">
-                  <div className="flex items-center gap-2">
-                    <span className={cn("flex size-8 items-center justify-center rounded-xl", column.tone === "orange" ? "bg-clinical-orange/10 text-clinical-orange" : column.tone === "green" ? "bg-clinical-green/10 text-clinical-green" : "bg-clinical-blue/10 text-clinical-blue")}><ColumnIcon className="size-4" /></span>
-                    <div><h2 className="text-sm font-extrabold text-clinical-dark">{column.title}</h2><p className="text-[11px] font-semibold text-clinical-muted">{column.ids.join(" · ")}</p></div>
+                <div className="mb-3 flex items-center gap-2.5 px-1 pt-1">
+                  <span className="flex size-9 shrink-0 items-center justify-center rounded-xl" style={{ backgroundColor: withAlpha(column.color, "18"), color: ink }}><ColumnIcon className="size-4" /></span>
+                  <div className="min-w-0 flex-1">
+                    <h2 className="truncate text-[13px] font-extrabold uppercase tracking-[0.08em] text-clinical-dark">{column.title}</h2>
+                    <p className="truncate text-[11px] font-semibold text-clinical-muted">{column.subtitle}</p>
                   </div>
-                  <span className="rounded-full bg-clinical-surfaceMuted px-2.5 py-1 text-[11px] font-black tabular-nums text-clinical-muted">{columnTasks.length}</span>
+                  <span className="shrink-0 rounded-full px-2.5 py-1 text-[11px] font-black tabular-nums" style={{ backgroundColor: withAlpha(column.color, "18"), color: ink }}>{columnTasks.length}</span>
                 </div>
-                <div className="flex flex-1 flex-col gap-3">
-                  {columnTasks.map((task) => <TaskCard key={task.id} task={task} {...cardProps} />)}
-                  {columnTasks.length === 0 ? <div className="flex flex-1 items-center justify-center rounded-2xl border border-dashed border-clinical-border/[0.18] p-6 text-center text-xs font-semibold text-clinical-muted">Arraste uma tarefa para esta etapa</div> : null}
+                <div className="flex flex-1 flex-col gap-2.5">
+                  {columnTasks.map((task) => <TaskCard key={task.id} task={task} accent={column.color} {...cardProps} />)}
+                  {columnTasks.length === 0 ? <div className="flex flex-1 items-center justify-center rounded-2xl border border-dashed p-6 text-center text-xs font-semibold text-clinical-muted" style={{ borderColor: withAlpha(column.color, "40") }}>Arraste uma tarefa para esta etapa</div> : null}
                 </div>
               </section>
             );
           })}
         </div>
       ) : view === "list" ? (
-        <div className="grid gap-3">{filtered.map((task) => <TaskCard key={task.id} task={task} {...cardProps} />)}</div>
+        <div className="space-y-4">
+          {columns.map((column) => {
+            const ColumnIcon = column.icon;
+            const columnTasks = filtered.filter((task) => column.ids.includes(task.status));
+            if (columnTasks.length === 0) return null;
+            const open = columnTasks.filter((task) => task.status !== "Concluído").length;
+            const ink = accentInk(column.color);
+            return (
+              <section key={column.title} aria-label={`Caderno ${column.title}`} className="overflow-hidden rounded-[24px] border border-clinical-border/[0.14] bg-clinical-surface/80 shadow-[0_8px_22px_rgba(38,53,50,0.04)]">
+                <header className="flex items-center gap-3 px-5 pb-3.5 pt-4" style={{ borderTop: `4px solid ${column.color}` }}>
+                  <span className="flex size-10 shrink-0 items-center justify-center rounded-2xl" style={{ backgroundColor: withAlpha(column.color, "18"), color: ink }}><ColumnIcon className="size-5" /></span>
+                  <div className="min-w-0 flex-1">
+                    <h2 className="text-[15px] font-black uppercase tracking-[0.06em] text-clinical-dark">{column.title}</h2>
+                    <p className="truncate text-[12px] font-semibold text-clinical-muted">{column.subtitle}</p>
+                  </div>
+                  <span className="shrink-0 rounded-full px-3 py-1 text-[12px] font-black tabular-nums" style={{ backgroundColor: withAlpha(column.color, "18"), color: ink }}>{open} em aberto</span>
+                </header>
+                <div
+                  className="border-t border-clinical-border/[0.10] px-2 pb-2"
+                  onDragOver={(event) => { event.preventDefault(); setDropTarget(column.ids[0]); }}
+                  onDragLeave={() => setDropTarget(null)}
+                  onDrop={(event) => { event.preventDefault(); handleDrop(column.ids[0]); }}
+                >
+                  {columnTasks.map((task) => <TaskCard key={task.id} task={task} variant="notebook" {...cardProps} />)}
+                </div>
+              </section>
+            );
+          })}
+        </div>
       ) : (
         <div className="space-y-3">
           <div className="flex items-center justify-between gap-3"><h2 className="text-sm font-extrabold text-clinical-dark">Agenda de tarefas</h2><span className="text-xs font-bold text-clinical-muted">{filtered.length} itens</span></div>
-          {[...filtered].sort((a, b) => a.due.localeCompare(b.due)).map((task) => <TaskCard key={task.id} task={task} {...cardProps} />)}
+          <div className="overflow-hidden rounded-[24px] border border-clinical-border/[0.14] bg-clinical-surface/80 px-2 pb-2 shadow-[0_8px_22px_rgba(38,53,50,0.04)]">
+            {[...filtered].sort((a, b) => a.due.localeCompare(b.due)).map((task) => <TaskCard key={task.id} task={task} variant="notebook" {...cardProps} />)}
+          </div>
         </div>
       )}
 
@@ -361,7 +470,7 @@ export function TodoListPage() {
         <form key={editingTask?.id ?? "new-task"} onSubmit={saveTask} className="space-y-4">
           <div className="grid gap-4 sm:grid-cols-2">
             <ModalField name="title" label="Título da tarefa" icon={ListTodo} placeholder="Ex.: Revisar protocolo de retorno" defaultValue={editingTask?.title} required className="sm:col-span-2" />
-            <ModalField name="tag" label="Etiqueta" icon={ClipboardCheck} placeholder="Ex.: Paciente, Qualidade" defaultValue={editingTask?.tag} required />
+            <ModalSelect name="tag" label="Etiqueta (tags do Kanban)" icon={ClipboardCheck} defaultValue={editingTask?.tag ?? kanbanTags[0]?.name ?? ""}>{Array.from(new Set([...kanbanTags.map((tag) => tag.name), ...(editingTask?.tag ? [editingTask.tag] : [])])).map((item) => <option key={item} value={item}>{item}</option>)}</ModalSelect>
             <ModalField name="patient" label="Paciente (opcional)" icon={UserRound} placeholder="Ex.: Amanda Souza" defaultValue={editingTask?.patient} />
             <ModalTextarea name="description" label="Contexto e descrição" icon={ClipboardCheck} placeholder="O que precisa ser feito e qual o resultado esperado?" defaultValue={editingTask?.description} required className="sm:col-span-2" />
             <ModalSelect name="responsible" label="Responsável" icon={UserRound} defaultValue={editingTask?.responsible ?? "Marina Costa"}>{Array.from(new Set(["Marina Costa", ...responsibles, ...(editingTask ? [editingTask.responsible] : [])])).map((item) => <option key={item}>{item}</option>)}</ModalSelect>

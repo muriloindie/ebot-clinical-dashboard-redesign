@@ -205,7 +205,7 @@ export function Topbar({ onNavigate, onMenuClick, clinic, clinics, onClinicChang
               <div>
                 <p className="mb-2 text-[13px] font-bold uppercase tracking-[0.12em] text-clinical-muted">Sugestões rápidas</p>
                 <div className="flex flex-wrap gap-2">
-                  {["Pacientes", "Protocolos", "Agenda", "Campanhas"].map((item) => (
+                  {["Contatos", "Protocolos", "Agenda", "Campanhas"].map((item) => (
                     <button
                       type="button"
                       key={item}

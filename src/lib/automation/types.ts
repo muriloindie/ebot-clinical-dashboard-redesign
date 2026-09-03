@@ -225,3 +225,27 @@ export type AppliedTemplateOptions = {
   protocolName: string | null;
   knowledgeBaseId: string | null;
 };
+
+export type PromptVoiceMode = "texto" | "voz";
+
+export const OPENAI_VOICES = ["alloy", "ash", "coral", "echo", "fable", "onyx", "nova", "sage", "shimmer"] as const;
+
+export type OpenAIVoice = (typeof OPENAI_VOICES)[number];
+
+export type Prompt = {
+  id: string;
+  name: string;
+  apiKey: string;
+  prompt: string;
+  queueId: string;
+  queueName: string;
+  voiceMode: PromptVoiceMode;
+  voice?: OpenAIVoice;
+  voiceApiKey?: string;
+  voiceRegion?: string;
+  temperature: number;
+  maxTokens: number;
+  maxHistoryMessages: number;
+  active: boolean;
+  updatedAt: string;
+};

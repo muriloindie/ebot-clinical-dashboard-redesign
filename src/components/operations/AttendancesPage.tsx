@@ -30,7 +30,6 @@ import {
 } from "lucide-react";
 import {
   attendances,
-  attendanceIndicators,
   attendanceChannels,
   attendanceResponsibles,
   attendanceUnits,
@@ -48,11 +47,10 @@ import { ModalField, ModalSelect } from "@/components/ui/ModalField";
 import { Dropdown } from "@/components/ui/Dropdown";
 import { Avatar } from "@/components/ui/Avatar";
 import { ChannelIcon } from "@/components/ui/ChannelIcon";
-import { StatStrip, type StatItem } from "@/components/ui/StatStrip";
 import { ViewSwitch } from "@/components/ui/ViewSwitch";
 import { PriorityBadge } from "@/components/ui/PriorityBadge";
 import { Timeline } from "@/components/ui/Timeline";
-import { PageHeader, SearchField, StatePanel } from "@/components/ui/Week1Primitives";
+import { PageHeader, StatePanel } from "@/components/ui/Week1Primitives";
 import { ChatComposer, type ComposerMessage } from "@/components/operations/ChatComposer";
 import { AiSuggestion, QuickReplies } from "@/components/operations/QuickReplies";
 import { cn } from "@/lib/cn";
@@ -71,15 +69,6 @@ const statusTone: Record<AttendanceStatus, "blue" | "orange" | "green" | "neutra
   "Resolvido pela IA": "green",
   Encerrado: "neutral"
 };
-
-const indicators: StatItem[] = [
-  { id: "active", label: "Atendimentos ativos", value: String(attendanceIndicators.active), hint: "agora", tone: "blue", icon: Headphones },
-  { id: "waiting", label: "Aguardando atendimento", value: String(attendanceIndicators.waiting), hint: "na fila", tone: "orange", icon: Clock3 },
-  { id: "human", label: "Em atendimento humano", value: String(attendanceIndicators.inHuman), hint: "com a equipe", tone: "teal", icon: UserRoundCheck },
-  { id: "ai", label: "Resolvidos pela IA", value: String(attendanceIndicators.resolvedByAi), hint: "hoje", tone: "green", icon: Bot },
-  { id: "wait-time", label: "Tempo médio de espera", value: attendanceIndicators.avgWait, hint: "última hora", tone: "neutral", icon: Timer },
-  { id: "sla", label: "SLA de resposta", value: attendanceIndicators.sla, hint: "meta 90%", tone: "green", icon: Flag }
-];
 
 function getInitialMessages(source: StoredAttendance[] = attendances) {
   return Object.fromEntries(
@@ -130,10 +119,9 @@ export function AttendancesPage() {
   const messagesRef = useRef<Record<string, StoredMessage[]>>({});
 
   usePageEnter(pageRef, [
-    { selector: "[data-stat-card]", from: { opacity: 0, y: 18 } },
     { selector: "[data-filter-bar]", from: { opacity: 0, y: 14 }, to: { duration: 0.45, ease: "power3.out" } },
     { selector: "[data-chat-panel]", from: { opacity: 0, x: 24 }, to: { duration: 0.5, ease: "power3.out" } },
-    { selector: "[data-profile-panel]", from: { opacity: 0, x: 28 }, to: { duration: 0.5, ease: "power3.out" } }
+    { selector: "[data-queue-panel]", from: { opacity: 0, x: -24 }, to: { duration: 0.5, ease: "power3.out" } }
   ], { stagger: 0.05, delay: 0.05 });
 
   useEffect(() => {
@@ -368,7 +356,7 @@ export function AttendancesPage() {
   const unreadTotal = rows.reduce((sum, row) => sum + row.unread, 0);
 
   return (
-    <div ref={pageRef}>
+    <div ref={pageRef} className="md:flex md:h-[calc(100dvh-97px)] md:flex-col md:overflow-hidden lg:h-[calc(100dvh-113px)] xl:h-[calc(100dvh-129px)]">
       <PageHeader
         eyebrow="Operação / Central de atendimento"
         title="Atendimentos"
@@ -377,16 +365,14 @@ export function AttendancesPage() {
         action={<Button onClick={() => setNewOpen(true)}><UserPlus className="size-4" />Novo atendimento</Button>}
       />
 
-      <StatStrip items={indicators} className="mb-4" />
-
-      <div data-filter-bar className="mb-4 flex flex-col gap-2 rounded-[24px] border border-clinical-border/[0.14] bg-clinical-surface/70 p-2.5">
-        <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
-          <SearchField value={search} onChange={setSearch} placeholder="Buscar por paciente, mensagem ou nº do atendimento" />
+      <div data-filter-bar className="mb-3 flex shrink-0 flex-col gap-2 rounded-[24px] border border-clinical-border/[0.14] bg-clinical-surface/70 p-2.5">
+        <div className="flex items-center justify-between gap-2">
+          <p className="text-[11px] font-extrabold uppercase tracking-[0.14em] text-clinical-muted">Filtros da fila</p>
           <div className="flex shrink-0 items-center gap-2">
             <ViewSwitch views={[{ id: "lista", label: "Lista", icon: List }, { id: "cards", label: "Cards", icon: LayoutGrid }]} value={view} onChange={(id) => setView(id as ViewMode)} />
             {hasFilters ? (
-              <button type="button" onClick={clearFilters} className="flex h-11 shrink-0 items-center gap-2 rounded-2xl border border-clinical-orange/25 bg-clinical-orange/[0.08] px-3 text-sm font-extrabold text-clinical-orange transition hover:bg-clinical-orange/[0.14]">
-                <X className="size-4" />Limpar filtros
+              <button type="button" onClick={clearFilters} className="flex h-9 shrink-0 items-center gap-2 rounded-2xl border border-clinical-orange/25 bg-clinical-orange/[0.08] px-3 text-xs font-extrabold text-clinical-orange transition hover:bg-clinical-orange/[0.14]">
+                <X className="size-3.5" />Limpar filtros
               </button>
             ) : null}
           </div>
@@ -416,8 +402,8 @@ export function AttendancesPage() {
           action={<Button size="sm" variant="secondary" onClick={clearFilters}>Limpar filtros</Button>}
         />
       ) : (
-        <div className="grid gap-4 md:grid-cols-[minmax(260px,0.72fr)_minmax(0,1.28fr)] xl:grid-cols-[minmax(240px,0.7fr)_minmax(0,1.3fr)_minmax(220px,0.55fr)] md:items-stretch">
-          <section className={cn("min-w-0 flex-col overflow-hidden rounded-[24px] border border-clinical-border/[0.14] bg-clinical-surface/75 md:flex md:h-[calc(100dvh-300px)] md:min-h-[440px]", mobileChat ? "hidden" : "flex")}>
+        <div className="grid min-h-0 flex-1 gap-4 md:grid-cols-[minmax(240px,0.66fr)_minmax(0,1.34fr)] md:items-stretch">
+          <section data-queue-panel className={cn("min-h-0 min-w-0 flex-col overflow-hidden rounded-[24px] border border-clinical-border/[0.14] bg-clinical-surface/75 md:flex md:h-full", mobileChat ? "hidden" : "flex")}>
             <div className="border-b border-clinical-border/[0.12] px-4 py-3">
               <div className="flex items-center justify-between gap-2">
                 <h2 className="text-sm font-extrabold text-clinical-dark">Fila de atendimento</h2>
@@ -453,7 +439,7 @@ export function AttendancesPage() {
             </div>
           </section>
 
-          <section data-chat-panel className={cn("min-w-0 flex-col overflow-hidden rounded-[24px] border border-clinical-border/[0.14] bg-clinical-surface/75 md:flex md:h-[calc(100dvh-300px)] md:min-h-[440px]", mobileChat ? "flex" : "hidden")}>
+          <section data-chat-panel className={cn("min-h-0 min-w-0 flex-col overflow-hidden rounded-[24px] border border-clinical-blue/15 bg-clinical-surface shadow-[0_18px_44px_rgba(38,53,50,0.10)] md:flex md:h-full", mobileChat ? "flex" : "hidden")}>
             <div className="flex items-center gap-2 border-b border-clinical-border/[0.12] px-2 py-1.5 md:hidden">
               <button type="button" onClick={() => setMobileChat(false)} className="flex h-9 items-center gap-1.5 rounded-xl px-2 text-xs font-extrabold text-clinical-blue transition hover:bg-clinical-blue/10" aria-label="Voltar para a fila de atendimento">
                 <ArrowLeft className="size-4" />Fila
@@ -479,15 +465,11 @@ export function AttendancesPage() {
               setQuickOpen={setQuickOpen}
             />
           </section>
-
-          <section data-profile-panel className="hidden min-w-0 flex-col overflow-hidden rounded-[24px] border border-clinical-border/[0.14] bg-clinical-surface/75 xl:flex xl:h-[calc(100dvh-300px)] xl:min-h-[440px]">
-            <PatientProfilePane attendance={selected} onOpenProfile={() => router.push(`/pacientes?q=${encodeURIComponent(selected?.patientName ?? "")}`)} onAddNote={() => setNoteOpen(true)} />
-          </section>
         </div>
       )}
 
       <Drawer open={profileDrawerOpen} onClose={() => setProfileDrawerOpen(false)} title="Perfil do paciente" description={selected?.patientName} width="max-w-lg">
-        {selected ? <PatientProfilePane attendance={selected} onOpenProfile={() => { setProfileDrawerOpen(false); router.push(`/pacientes?q=${encodeURIComponent(selected.patientName)}`); }} onAddNote={() => setNoteOpen(true)} /> : null}
+        {selected ? <PatientProfilePane attendance={selected} onOpenProfile={() => { setProfileDrawerOpen(false); router.push(`/contatos?q=${encodeURIComponent(selected.patientName)}`); }} onAddNote={() => setNoteOpen(true)} /> : null}
       </Drawer>
 
       <Modal open={newOpen} onClose={() => setNewOpen(false)} title="Novo atendimento" eyebrow="Central de atendimento" description="Crie um atendimento manualmente e deixe a IA assumir o primeiro contato." icon={UserPlus} className="max-w-2xl">

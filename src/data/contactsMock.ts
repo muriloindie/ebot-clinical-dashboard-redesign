@@ -11,6 +11,8 @@ export type Contact = {
   lastSeen: string;
   tags: string[];
   photo?: string;
+  origin?: string;
+  responsible?: string;
 };
 
 export const contactStages: ContactStage[] = ["Novo contato", "Em atendimento", "Qualificado", "Agendado", "Convertido", "Inativo"];

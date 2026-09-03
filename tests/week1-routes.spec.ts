@@ -1,7 +1,7 @@
 import { expect, test } from "@playwright/test";
 import AxeBuilder from "@axe-core/playwright";
 
-const routes = ["/atendimentos", "/agenda", "/pacientes", "/contatos", "/protocolos", "/relacionamentos", "/chat-interno", "/tarefas", "/kanban"];
+const routes = ["/atendimentos", "/agenda", "/contatos", "/protocolos", "/chat-interno", "/tarefas", "/kanban"];
 const secondaryRoutes = ["/canais", "/tags", "/arquivos", "/templates", "/respostas-rapidas", "/openai", "/fluxos-atendimento", "/base-conhecimento", "/campanhas", "/campanhas/listas", "/campanhas/configuracoes", "/setores", "/filas", "/usuarios", "/permissoes", "/integracoes", "/api", "/financeiro", "/configuracoes", "/ajuda", "/perfil"];
 
 test.describe("Semana 3", () => {
@@ -24,14 +24,19 @@ test.describe("Semana 3", () => {
       "/tickets": "/atendimentos",
       "/contacts": "/contatos",
       "/protocols": "/protocolos",
-      "/ticket-contact-origins": "/relacionamentos",
+      "/ticket-contact-origins": "/contatos",
       "/chats": "/chat-interno",
-      "/todolist": "/tarefas"
+      "/todolist": "/tarefas",
+      "/pacientes": "/contatos",
+      "/relacionamentos": "/contatos"
     };
     for (const [from, to] of Object.entries(redirects)) {
       await page.goto(from);
       await expect(page).toHaveURL(new RegExp(to.replace("/", "\\/") + "$"));
     }
+
+    await page.goto("/kanban/configuracoes");
+    await expect(page).toHaveURL(/\/configuracoes\?secao=kanban$/);
   });
 
   test("login mantém estrutura acessível", async ({ page }) => {

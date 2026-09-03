@@ -1,19 +1,19 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { Building2, Pencil, Plus, Power, RadioTower, Trash2, UsersRound } from "lucide-react";
-import { deleteSector, listSectors, newCompanyId, saveSector } from "@/lib/company/companyService";
-import type { Sector } from "@/lib/company/types";
+import { Building2, ListOrdered, Pencil, Plus, Power, Trash2, UsersRound } from "lucide-react";
+import { deleteSector, listQueues, listSectors, newCompanyId, saveSector } from "@/lib/company/companyService";
+import type { Queue, Sector } from "@/lib/company/types";
 import { useDemo } from "@/components/state/DemoProvider";
 import { Button } from "@/components/ui/Button";
+import { ColorField, CLINICAL_PALETTE } from "@/components/ui/ColorField";
 import { ConfirmationDialog } from "@/components/ui/ConfirmationDialog";
 import { Modal } from "@/components/ui/Modal";
 import { Toggle } from "@/components/ui/Toggle";
 import { SearchField, PageHeader, SegmentedTabs } from "@/components/ui/Week1Primitives";
-import { StatStrip, type StatItem } from "@/components/ui/StatStrip";
 import { cn } from "@/lib/cn";
 
-const PALETTE = ["#3A9DCA", "#E2574C", "#F2A34D", "#4CB782", "#8E6FBD", "#5A7873"];
+const PALETTE = CLINICAL_PALETTE;
 
 const ALL = "Todos";
 type Scope = typeof ALL | "ativos" | "inativos";
@@ -25,10 +25,15 @@ function blankSector(): Sector {
 export function SetoresPage() {
   const { toast } = useDemo();
   const [sectors, setSectors] = useState<Sector[]>(() => listSectors());
+  const [queues, setQueues] = useState<Queue[]>(() => listQueues());
   const [query, setQuery] = useState("");
   const [scope, setScope] = useState<Scope>(ALL);
   const [deleting, setDeleting] = useState<Sector | null>(null);
   const [draft, setDraft] = useState<Sector | null>(null);
+
+  function queuesOf(sectorId: string) {
+    return queues.filter((queue) => queue.sectorId === sectorId);
+  }
 
   const filtered = useMemo(() => {
     return sectors.filter((sector) => {
@@ -38,11 +43,6 @@ export function SetoresPage() {
     });
   }, [sectors, query, scope]);
 
-  const stats: StatItem[] = useMemo(() => [
-    { id: "total", label: "Setores", value: String(sectors.length), hint: `${sectors.filter((sector) => sector.active).length} ativos`, tone: "blue", icon: Building2 },
-    { id: "members", label: "Membros", value: String(sectors.reduce((total, sector) => total + sector.memberCount, 0)), hint: "na unidade", tone: "teal", icon: UsersRound },
-    { id: "queues", label: "Filas vinculadas", value: String(sectors.reduce((total, sector) => total + sector.queueIds.length, 0)), hint: "roteamento do bot", tone: "green", icon: RadioTower }
-  ], [sectors]);
 
   function save() {
     if (!draft) return;
@@ -58,6 +58,7 @@ export function SetoresPage() {
       toast(`Setor "${draft.name}" criado.`);
     }
     setSectors(listSectors());
+    setQueues(listQueues());
     setDraft(null);
   }
 
@@ -69,7 +70,7 @@ export function SetoresPage() {
 
   function remove() {
     if (!deleting) return;
-    if (deleting.queueIds.length > 0) {
+    if (queuesOf(deleting.id).length > 0) {
       toast("Reatribua as filas antes de excluir o setor.", "warning");
       setDeleting(null);
       return;
@@ -88,8 +89,6 @@ export function SetoresPage() {
         description="Estrutura da unidade: cada setor agrupa filas de atendimento e define quem opera cada área."
         action={<Button onClick={() => setDraft(blankSector())}><Plus className="size-4" />Novo setor</Button>}
       />
-
-      <StatStrip items={stats} />
 
       <div className="flex flex-wrap items-center justify-between gap-3">
         <SearchField value={query} onChange={setQuery} placeholder="Buscar setor…" />
@@ -132,12 +131,27 @@ export function SetoresPage() {
 
               <p className="mt-3 text-[12px] font-semibold leading-5 text-clinical-slate">{sector.description}</p>
 
-              <div className="mt-4 flex flex-wrap items-center gap-2">
+              <div className="mt-4">
+                <p className="mb-2 flex items-center gap-1.5 text-[11px] font-extrabold uppercase tracking-wider text-clinical-muted">
+                  <ListOrdered className="size-3.5" />Filas deste setor ({queuesOf(sector.id).length})
+                </p>
+                {queuesOf(sector.id).length === 0 ? (
+                  <p className="rounded-xl border border-dashed border-clinical-border/[0.16] px-3 py-2 text-[12px] font-semibold text-clinical-muted">Nenhuma fila vinculada ainda.</p>
+                ) : (
+                  <div className="flex flex-wrap gap-1.5">
+                    {queuesOf(sector.id).map((queue) => (
+                      <span key={queue.id} className="inline-flex items-center gap-1.5 rounded-full bg-clinical-surfaceMuted/70 px-2.5 py-1 text-[11px] font-extrabold text-clinical-slate">
+                        <span className="size-2 rounded-full" style={{ backgroundColor: queue.color }} aria-hidden="true" />
+                        {queue.name}
+                      </span>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              <div className="mt-3 flex flex-wrap items-center gap-2">
                 <span className="flex items-center gap-1.5 rounded-xl bg-clinical-surfaceMuted/60 px-2.5 py-1 text-[11px] font-extrabold text-clinical-slate">
                   <UsersRound className="size-3.5" />{sector.memberCount} membros
-                </span>
-                <span className="flex items-center gap-1.5 rounded-xl bg-clinical-surfaceMuted/60 px-2.5 py-1 text-[11px] font-extrabold text-clinical-slate">
-                  <RadioTower className="size-3.5" />{sector.queueIds.length} filas
                 </span>
               </div>
 
@@ -161,14 +175,7 @@ export function SetoresPage() {
               <label htmlFor="sec-name" className="mb-1.5 block text-xs font-extrabold text-clinical-slate">Nome do setor</label>
               <input id="sec-name" autoFocus value={draft.name} onChange={(event) => setDraft({ ...draft, name: event.target.value })} placeholder="Ex.: Cardiologia" className="h-11 w-full rounded-2xl border border-clinical-border/[0.14] bg-clinical-surfaceMuted/45 px-3 text-sm font-semibold text-clinical-dark outline-none focus:border-clinical-blue/45" />
             </div>
-            <div>
-              <label className="mb-1.5 block text-xs font-extrabold text-clinical-slate">Cor do setor</label>
-              <div className="flex gap-2">
-                {PALETTE.map((color) => (
-                  <button key={color} onClick={() => setDraft({ ...draft, color })} className={cn("size-8 rounded-xl transition", draft.color === color && "ring-2 ring-clinical-blue ring-offset-2 ring-offset-clinical-surface")} style={{ backgroundColor: color }} title={color} />
-                ))}
-              </div>
-            </div>
+            <ColorField label="Cor do setor" value={draft.color} onChange={(color) => setDraft({ ...draft, color })} />
             <div>
               <label htmlFor="sec-desc" className="mb-1.5 block text-xs font-extrabold text-clinical-slate">Descrição</label>
               <textarea id="sec-desc" rows={3} value={draft.description} onChange={(event) => setDraft({ ...draft, description: event.target.value })} placeholder="O que este setor atende?" className="w-full rounded-2xl border border-clinical-border/[0.14] bg-clinical-surfaceMuted/45 px-3 py-2.5 text-sm font-semibold text-clinical-dark outline-none focus:border-clinical-blue/45" />

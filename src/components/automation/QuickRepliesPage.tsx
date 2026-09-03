@@ -1,14 +1,13 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Braces, Hash, MessageCircle, Pencil, Plus, Sparkles, Trash2, TrendingUp, Users, Zap } from "lucide-react";
+import { Braces, Hash, MessageCircle, Pencil, Plus, Sparkles, Trash2, TrendingUp, Zap } from "lucide-react";
 import { deleteQuickReply, listQuickReplies, newQuickReplyId, saveQuickReply } from "@/lib/automation/n8nService";
 import type { QuickReply } from "@/lib/automation/types";
 import { useDemo } from "@/components/state/DemoProvider";
 import { Button } from "@/components/ui/Button";
 import { ConfirmationDialog } from "@/components/ui/ConfirmationDialog";
 import { Modal } from "@/components/ui/Modal";
-import { StatStrip, type StatItem } from "@/components/ui/StatStrip";
 import { PageHeader, SearchField, SegmentedTabs, StatePanel } from "@/components/ui/Week1Primitives";
 import { cn } from "@/lib/cn";
 
@@ -68,15 +67,6 @@ export function QuickRepliesPage() {
     });
   }, [replies, query, category]);
 
-  const stats: StatItem[] = useMemo(() => {
-    const usage = replies.reduce((total, reply) => total + reply.usage7d, 0);
-    return [
-      { id: "replies", label: "Respostas salvas", value: String(replies.length), hint: "à disposição da equipe", tone: "blue", icon: MessageCircle },
-      { id: "usage", label: "Usos (7 dias)", value: usage.toLocaleString("pt-BR"), hint: "atendimentos com resposta", tone: "green", icon: TrendingUp },
-      { id: "categories", label: "Categorias", value: String(new Set(replies.map((reply) => reply.category)).size), hint: "organizadas por assunto", tone: "teal", icon: Hash },
-      { id: "scopes", label: "Escopos", value: String(new Set(replies.flatMap((reply) => reply.scopes)).size), hint: "pacientes e equipe", tone: "orange", icon: Users }
-    ];
-  }, [replies]);
 
   function openNew() {
     setDraft(emptyDraft);
@@ -131,8 +121,6 @@ export function QuickRepliesPage() {
         description="Atalhos de texto que agilizam o atendimento com variáveis dinâmicas como {nome_paciente} e {horario_atendimento}, substituídas automaticamente pela IA."
         action={<Button onClick={openNew}><Plus className="size-4" />Nova resposta</Button>}
       />
-
-      <StatStrip items={stats} />
 
       <div className="flex flex-wrap items-center justify-between gap-3">
         <SegmentedTabs tabs={categories.map((item) => ({ id: item, label: item }))} value={category} onChange={setCategory} />

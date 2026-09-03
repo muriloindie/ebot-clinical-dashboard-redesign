@@ -4,6 +4,7 @@ import type {
   DriveFile,
   FlowExecution,
   KnowledgeBase,
+  Prompt,
   QuickReply,
   Workflow
 } from "@/lib/automation/types";
@@ -857,5 +858,53 @@ export const seedAssistants: Assistant[] = [
     guardrails: ["Nunca interpretar laudos", "Nunca antecipar resultados"],
     status: "paused",
     metrics: { resolutionRate: 68, handoffRate: 24, conversations7d: 0, tokens7d: "0", cost7d: "R$ 0,00", csat: 4.8 }
+  }
+];
+
+export const seedPrompts: Prompt[] = [
+  {
+    id: "prompt-recepcao",
+    name: "Triagem de recepção",
+    apiKey: "sk-••••••••••••3f2a",
+    prompt: "Você é a recepcionista virtual da clínica. Acolha o paciente, identifique o motivo do contato e direcione para a fila correta. Fale em pt-BR, tom acolhedor e objetivo.",
+    queueId: "que-recepcao",
+    queueName: "Recepção",
+    voiceMode: "texto",
+    temperature: 0.4,
+    maxTokens: 800,
+    maxHistoryMessages: 12,
+    active: true,
+    updatedAt: "hoje"
+  },
+  {
+    id: "prompt-exames",
+    name: "Orientação de exames",
+    apiKey: "sk-••••••••••••8b7c",
+    prompt: "Você orienta sobre preparo, prazos e entrega de resultados de exames. Use somente a base de exames e nunca interprete laudos.",
+    queueId: "que-exames",
+    queueName: "Exames",
+    voiceMode: "voz",
+    voice: "nova",
+    voiceApiKey: "sk-••••••••••••voice1",
+    voiceRegion: "pt-BR",
+    temperature: 0.3,
+    maxTokens: 600,
+    maxHistoryMessages: 10,
+    active: true,
+    updatedAt: "ontem"
+  },
+  {
+    id: "prompt-financeiro",
+    name: "Financeiro e convênios",
+    apiKey: "sk-••••••••••••d4e9",
+    prompt: "Você responde dúvidas sobre valores, convênios atendidos, cobertura e formas de pagamento, sempre conferindo a tabela vigente.",
+    queueId: "que-financeiro",
+    queueName: "Financeiro",
+    voiceMode: "texto",
+    temperature: 0.2,
+    maxTokens: 500,
+    maxHistoryMessages: 8,
+    active: false,
+    updatedAt: "há 3 dias"
   }
 ];

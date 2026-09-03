@@ -1,8 +1,9 @@
 import {
   Activity,
   BookOpen,
-  Bot,
+  Bug,
   Building2,
+  CalendarClock,
   CalendarDays,
   CheckSquare,
   CircleHelp,
@@ -11,22 +12,24 @@ import {
   Columns3,
   ContactRound,
   FileText,
-  GitBranch,
   Headphones,
+  HeartPulse,
   LayoutDashboard,
-  Link2,
   ListOrdered,
   Megaphone,
   MessageCircle,
   MessageSquareText,
   MessagesSquare,
+  Microscope,
+  Palette,
   Plug,
   RadioTower,
+  ScrollText,
   Settings,
   Settings2,
-  ShieldCheck,
+  ShieldHalf,
+  Stethoscope,
   Tags,
-  UserRound,
   UsersRound,
   WalletCards,
   Workflow,
@@ -75,9 +78,7 @@ export const sidebarNavigation: SidebarGroupConfig[] = [
     label: "Pacientes",
     icon: UsersRound,
     items: [
-      { id: "pacientes", label: "Pacientes", icon: UserRound, path: "/pacientes", enabled: true },
       { id: "contatos", label: "Contatos", icon: ContactRound, path: "/contatos", enabled: true },
-      { id: "relacionamentos", label: "Relacionamentos", icon: Link2, path: "/relacionamentos", enabled: true },
       { id: "tags", label: "Tags", icon: Tags, path: "/tags", enabled: true },
       { id: "protocolos", label: "Protocolos", icon: ClipboardList, path: "/protocolos", enabled: true },
       { id: "arquivos", label: "Arquivos", icon: FileText, path: "/arquivos", enabled: true }
@@ -86,11 +87,10 @@ export const sidebarNavigation: SidebarGroupConfig[] = [
   {
     id: "automacao-ia",
     label: "Automação",
-    icon: Bot,
+    icon: Workflow,
     items: [
       { id: "templates", label: "Templates", icon: MessageSquareText, path: "/templates", enabled: true },
       { id: "respostas-rapidas", label: "Respostas rápidas", icon: Zap, path: "/respostas-rapidas", enabled: true },
-      { id: "openai", label: "Open.AI", icon: Bot, path: "/openai", enabled: true },
       { id: "fluxos-automacao", label: "Fluxos de automação", icon: Workflow, path: "/fluxos-automacao", enabled: true },
       { id: "base-conhecimento", label: "Base de conhecimento", icon: BookOpen, path: "/base-conhecimento", enabled: true }
     ]
@@ -122,10 +122,10 @@ export const sidebarNavigation: SidebarGroupConfig[] = [
     label: "Clínica",
     icon: Building2,
     items: [
-      { id: "setores", label: "Setores", icon: GitBranch, path: "/setores", enabled: true },
-      { id: "filas", label: "Filas", icon: ListOrdered, path: "/filas", enabled: true },
-      { id: "usuarios", label: "Usuários", icon: UserRound, path: "/usuarios", enabled: true },
-      { id: "permissoes", label: "Permissões", icon: ShieldCheck, path: "/permissoes", enabled: true }
+      { id: "profissionais", label: "Profissionais", icon: Stethoscope, path: "/profissionais", enabled: true },
+      { id: "agenda-google", label: "Agenda Google", icon: CalendarClock, path: "/agenda-google", enabled: true },
+      { id: "convenios", label: "Convênios", icon: HeartPulse, path: "/convenios", enabled: true },
+      { id: "exames", label: "Exames", icon: Microscope, path: "/exames", enabled: true }
     ]
   },
   {
@@ -133,11 +133,25 @@ export const sidebarNavigation: SidebarGroupConfig[] = [
     label: "Sistema",
     icon: Settings2,
     items: [
+      { id: "filas", label: "Filas", icon: ListOrdered, path: "/filas", enabled: true },
+      { id: "setores", label: "Setores", icon: Building2, path: "/setores", enabled: true },
+      { id: "usuarios", label: "Usuários", icon: UsersRound, path: "/usuarios", enabled: true },
       { id: "integracoes", label: "Integrações", icon: Plug, path: "/integracoes", enabled: true },
+      { id: "openai", label: "Open.AI", icon: Workflow, path: "/openai", enabled: true },
       { id: "api", label: "API", icon: Code2, path: "/api", enabled: true },
       { id: "financeiro", label: "Financeiro", icon: WalletCards, path: "/financeiro", enabled: true },
       { id: "configuracoes", label: "Configurações", icon: Settings, path: "/configuracoes", enabled: true },
       { id: "ajuda", label: "Ajuda", icon: CircleHelp, path: "/ajuda", enabled: true }
+    ]
+  },
+  {
+    id: "retaguarda",
+    label: "Retaguarda",
+    icon: ShieldHalf,
+    items: [
+      { id: "retaguarda-logs", label: "Logs", icon: ScrollText, path: "/retaguarda/logs", enabled: true },
+      { id: "retaguarda-bugs", label: "Bugs", icon: Bug, path: "/retaguarda/bugs", enabled: true },
+      { id: "retaguarda-aparencia", label: "Aparência", icon: Palette, path: "/retaguarda/aparencia", enabled: true }
     ]
   }
 ];

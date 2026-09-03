@@ -31,7 +31,6 @@ import { Button } from "@/components/ui/Button";
 import { ConfirmationDialog } from "@/components/ui/ConfirmationDialog";
 import { Drawer } from "@/components/ui/Drawer";
 import { Modal } from "@/components/ui/Modal";
-import { StatStrip, type StatItem } from "@/components/ui/StatStrip";
 import { PageHeader, SearchField, SegmentedTabs, StatePanel } from "@/components/ui/Week1Primitives";
 import { ViewSwitch } from "@/components/ui/ViewSwitch";
 import { cn } from "@/lib/cn";
@@ -168,16 +167,6 @@ export function FilesPage() {
     });
   }, [files, folder, kindFilter, query]);
 
-  const stats: StatItem[] = useMemo(() => {
-    const pendingConsent = files.filter((file) => file.consent && !file.consent.granted).length;
-    return [
-      { id: "files", label: "Arquivos", value: String(files.length), hint: "no drive da unidade", tone: "blue", icon: FileText },
-      { id: "folders", label: "Pastas", value: String(new Set(files.map((file) => file.folder)).size), hint: "organização ativa", tone: "teal", icon: Folder },
-      { id: "starred", label: "Favoritos", value: String(files.filter((file) => file.starred).length), hint: "acesso rápido", tone: "orange", icon: Star },
-      { id: "pending", label: "Consentimentos", value: String(pendingConsent), hint: pendingConsent ? "aguardando do titular" : "todos concedidos", tone: pendingConsent ? "neutral" : "green", icon: ShieldAlert }
-    ];
-  }, [files]);
-
   function withCurrentFile(id: string, updater: (file: DriveFile) => DriveFile) {
     const file = files.find((item) => item.id === id);
     if (!file) return;
@@ -269,8 +258,6 @@ export function FilesPage() {
         description="Drive de documentos do paciente e da base de conhecimento: upload, pastas, consentimento, permissões e auditoria de acesso — pronto para conectar ao armazenamento do backend."
         action={<Button onClick={() => setUploadOpen(true)}><Upload className="size-4" />Enviar arquivo</Button>}
       />
-
-      <StatStrip items={stats} />
 
       <div className="flex flex-col gap-4 lg:flex-row">
         <aside className="shrink-0 lg:w-56" aria-label="Pastas de arquivos">

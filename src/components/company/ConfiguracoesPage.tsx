@@ -1,22 +1,30 @@
 "use client";
 
-import { useMemo, useState } from "react";
-import { Bell, Building2, Palette, Save, ShieldCheck } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+import { Bell, Bot, Building2, Columns3, LifeBuoy, Palette, Save, ShieldCheck, UserRound } from "lucide-react";
 import { getConfig, saveConfig } from "@/lib/company/companyService";
 import type { AppConfigSection } from "@/lib/company/types";
 import { useDemo } from "@/components/state/DemoProvider";
+import { AjudaConfigPanel } from "@/components/company/AjudaConfigPanel";
+import { PermissoesPanel } from "@/components/company/PermissoesPage";
+import { KanbanConfigPanel } from "@/components/work-management/KanbanConfigPage";
 import { Button } from "@/components/ui/Button";
 import { Toggle } from "@/components/ui/Toggle";
 import { PageHeader, SegmentedTabs } from "@/components/ui/Week1Primitives";
 import { cn } from "@/lib/cn";
 
 type ConfigValues = Record<string, string | boolean | number>;
+type SettingsTab = AppConfigSection | "permissoes" | "kanban" | "ajuda";
 
-const SECTIONS: { id: AppConfigSection; label: string; icon: typeof Bell; description: string }[] = [
+const SECTIONS: { id: SettingsTab; label: string; icon: typeof Bell; description: string }[] = [
   { id: "geral", label: "Geral", icon: Building2, description: "Identidade da unidade e padrões de agendamento." },
   { id: "notificacoes", label: "Notificações", icon: Bell, description: "Alertas enviados para a equipe e resumos por e-mail." },
   { id: "aparencia", label: "Aparência", icon: Palette, description: "Tema, densidade e cor de destaque da interface." },
-  { id: "seguranca", label: "Segurança", icon: ShieldCheck, description: "Chaves de API, sessões e políticas de retenção." }
+  { id: "kanban", label: "Kanban", icon: Columns3, description: "Colunas, cores, etapas e limites do quadro operacional." },
+  { id: "seguranca", label: "Segurança", icon: ShieldCheck, description: "Chaves de API, sessões e políticas de retenção." },
+  { id: "ia", label: "IA (Open.AI)", icon: Bot, description: "Comportamento do assistente de atendimento, limiar de handoff e mensagem inicial." },
+  { id: "ajuda", label: "Ajuda", icon: LifeBuoy, description: "Vídeos, textos e perguntas do Centro de ajuda, com sugestões da IA." },
+  { id: "permissoes", label: "Permissões", icon: UserRound, description: "Matriz de acesso por papel aplicada a todos os módulos do sistema." }
 ];
 
 function Field({ id, label, children }: { id: string; label: string; children: React.ReactNode }) {
@@ -33,14 +41,20 @@ const selectClass = inputClass;
 
 export function ConfiguracoesPage() {
   const { toast } = useDemo();
-  const [section, setSection] = useState<AppConfigSection>("geral");
+  const [section, setSection] = useState<SettingsTab>("geral");
   const [values, setValues] = useState<ConfigValues>(() => getConfig("geral"));
 
-  const active = useMemo(() => SECTIONS.find((item) => item.id === section) ?? SECTIONS[0], [section]);
+  useEffect(() => {
+    const secao = new URLSearchParams(window.location.search).get("secao");
+    if (secao === "kanban" || secao === "ajuda") setSection(secao);
+  }, []);
 
-  function open(next: AppConfigSection) {
+  const active = useMemo(() => SECTIONS.find((item) => item.id === section) ?? SECTIONS[0], [section]);
+  const isConfigSection = (id: SettingsTab): id is AppConfigSection => id !== "permissoes" && id !== "kanban" && id !== "ajuda";
+
+  function open(next: SettingsTab) {
     setSection(next);
-    setValues(getConfig(next));
+    if (isConfigSection(next)) setValues(getConfig(next));
   }
 
   function set(key: string, value: string | boolean | number) {
@@ -48,8 +62,10 @@ export function ConfiguracoesPage() {
   }
 
   function save() {
-    saveConfig(section, values);
-    toast(`Configurações de ${active.label.toLowerCase()} salvas.`);
+    if (isConfigSection(section)) {
+      saveConfig(section, values);
+      toast(`Configurações de ${active.label.toLowerCase()} salvas.`);
+    }
   }
 
   return (
@@ -58,15 +74,22 @@ export function ConfiguracoesPage() {
         eyebrow="Sistema / Preferências"
         title="Configurações"
         description="Preferências da unidade: identidade, alertas, aparência e políticas de segurança."
-        action={<Button onClick={save}><Save className="size-4" />Salvar seção</Button>}
+         action={section === "kanban" ? undefined : <Button onClick={save}><Save className="size-4" />Salvar seção</Button>}
       />
 
       <SegmentedTabs
         tabs={SECTIONS.map((item) => ({ id: item.id, label: item.label }))}
         value={section}
-        onChange={(id) => open(id as AppConfigSection)}
+        onChange={(id) => open(id as SettingsTab)}
       />
 
+      {section === "kanban" ? (
+        <KanbanConfigPanel embedded />
+      ) : section === "ajuda" ? (
+        <AjudaConfigPanel />
+      ) : section === "permissoes" ? (
+        <PermissoesPanel />
+      ) : (
       <section className="rounded-[24px] border border-clinical-border/[0.14] bg-clinical-surface/80 p-5 shadow-[0_8px_24px_rgba(38,53,50,0.04)]">
         <div className="flex items-center gap-3">
           <span className="flex size-10 items-center justify-center rounded-2xl bg-clinical-blue/[0.10] text-clinical-blue"><active.icon className="size-5" /></span>
@@ -155,6 +178,33 @@ export function ConfiguracoesPage() {
             </>
           )}
 
+          {section === "ia" && (
+            <>
+              <Toggle label="Assistente de IA ativo" hint="A IA responde os primeiros contatos antes do handoff para a equipe." checked={Boolean(values.aiEnabled)} onChange={(value) => set("aiEnabled", value)} />
+              <div className="grid gap-4 sm:grid-cols-2">
+                <Field id="cfg-ai-model" label="Modelo">
+                  <select id="cfg-ai-model" className={selectClass} value={String(values.aiModel ?? "GPT 5.5 Fast")} onChange={(event) => set("aiModel", event.target.value)}>
+                    <option>GPT 5.5 Fast</option>
+                    <option>GPT 5.5</option>
+                    <option>GPT 5 Mini (econômico)</option>
+                  </select>
+                </Field>
+                <Field id="cfg-ai-tone" label="Tom da conversa">
+                  <select id="cfg-ai-tone" className={selectClass} value={String(values.aiTone ?? "Acolhedor e objetivo")} onChange={(event) => set("aiTone", event.target.value)}>
+                    <option>Acolhedor e objetivo</option>
+                    <option>Formal</option>
+                    <option>Descontraído</option>
+                  </select>
+                </Field>
+                <Field id="cfg-ai-handoff" label="Limiar de transferência para humano (%)"><input id="cfg-ai-handoff" type="number" min={40} max={99} className={inputClass} value={Number(values.handoffThreshold ?? 72)} onChange={(event) => set("handoffThreshold", Number(event.target.value))} /></Field>
+                <Field id="cfg-ai-signature" label="Assinatura do bot"><input id="cfg-ai-signature" className={inputClass} value={String(values.aiSignature ?? "")} onChange={(event) => set("aiSignature", event.target.value)} /></Field>
+              </div>
+              <Field id="cfg-ai-greeting" label="Mensagem inicial da IA">
+                <textarea id="cfg-ai-greeting" rows={2} className={cn(inputClass, "h-auto py-2.5")} value={String(values.aiGreeting ?? "")} onChange={(event) => set("aiGreeting", event.target.value)} />
+              </Field>
+            </>
+          )}
+
           {section === "seguranca" && (
             <>
               <div className="grid gap-4 sm:grid-cols-2">
@@ -178,6 +228,7 @@ export function ConfiguracoesPage() {
           <Button onClick={save}><Save className="size-4" />Salvar seção</Button>
         </div>
       </section>
+      )}
     </div>
   );
 }

@@ -1,2 +1,5 @@
-import { PatientsPage } from "@/components/operations/PatientsPage";
-export default function PacientesRoute() { return <PatientsPage />; }
+import { redirect } from "next/navigation";
+
+export default function PacientesRoute() {
+  redirect("/contatos");
+}

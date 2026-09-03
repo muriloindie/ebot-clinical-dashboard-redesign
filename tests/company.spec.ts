@@ -59,12 +59,15 @@ test.describe("Módulos de comunicação, clínica e sistema", () => {
   test("filas permite criar fila vinculada a um setor", async ({ page }) => {
     await page.goto("/filas");
     await expect(page.getByText("Recepção geral")).toBeVisible();
-    await page.getByRole("button", { name: "Nova fila" }).click();
-    await page.getByLabel("Nome da fila").fill("Encaminhamento interno");
+    await page.getByRole("button", { name: "Adicionar fila" }).click();
+    await page.getByText("Recepção, triagem e fila principal").first().click();
+    await page.getByLabel("Nome").fill("Encaminhamento interno");
     await page.getByLabel("Setor").selectOption({ label: "Atendimento" });
-    await page.getByRole("button", { name: "Criar fila" }).click();
-    await expect(page.getByText(/Fila "Encaminhamento interno" criada\./)).toBeVisible();
-    await expect(page.getByRole("heading", { name: "Encaminhamento interno" })).toBeVisible();
+    await page.getByRole("button", { name: "Continuar" }).click();
+    await expect(page.getByText(/Etapa 2/)).toBeVisible();
+    await page.getByRole("button", { name: "Salvar fila" }).click();
+    await expect(page.getByText(/Fila "Encaminhamento interno" adicionada/)).toBeVisible();
+    await expect(page.getByText("Encaminhamento interno").first()).toBeVisible();
   });
 
   test("usuarios permite convidar um novo membro", async ({ page }) => {
@@ -100,24 +103,27 @@ test.describe("Módulos de comunicação, clínica e sistema", () => {
     await expect(page.getByText(/"Dashboard" para Administrador agora é leitura\./)).toBeVisible();
   });
 
-  test("integracoes conecta um canal desconectado", async ({ page }) => {
+  test("integracoes conecta um typebot desconectado", async ({ page }) => {
     await page.goto("/integracoes");
-    await expect(page.getByText("WhatsApp Business API")).toBeVisible();
-    await expect(page.getByText("iSIS Agenda")).toBeVisible();
-    await page.getByRole("button", { name: "Conectar agora" }).click();
-    await expect(page.getByText(/iSIS Agenda" conectada com sucesso\./)).toBeVisible();
+    await expect(page.getByText("Recepção — Typebot principal")).toBeVisible();
+    await expect(page.getByText("Exames — Typebot laboratorial")).toBeVisible();
+    await page.locator("[data-integration-card]", { hasText: "Exames — Typebot laboratorial" }).getByRole("button", { name: "Conectar" }).click();
+    await expect(page.getByText(/Exames — Typebot laboratorial" conectada\./)).toBeVisible();
   });
 
-  test("integracoes cria uma integração webhook personalizada", async ({ page }) => {
+  test("integracoes cria um typebot e configura o agente", async ({ page }) => {
     await page.goto("/integracoes");
-    await page.getByRole("button", { name: "Nova integração" }).click();
-    await page.getByText("Webhook personalizado").click();
-    await page.getByLabel("Nome da integração").fill("Webhook CRM");
-    await page.getByLabel("URL do webhook").fill("https://api.crm.com/ebot");
-    await page.getByRole("button", { name: "Criar integração" }).click();
-    await expect(page.getByText(/Webhook CRM" cadastrada\./)).toBeVisible();
-    await expect(page.getByText("Desconectada").first()).toBeVisible();
-    await expect(page.getByText("message.received").first()).toBeVisible();
+    await page.getByRole("button", { name: "Adicionar Integração" }).click();
+    await page.getByLabel("Nome").fill("Typebot CRM");
+    await page.getByLabel("URL").fill("https://typebot.crm.com");
+    await page.getByLabel("Typebot — Slug").fill("crm-principal");
+    await page.getByRole("button", { name: "Adicionar Integração", exact: true }).last().click();
+    await expect(page.getByText(/Integração "Typebot CRM" adicionada\./)).toBeVisible();
+    await page.locator("[data-integration-card]", { hasText: "Typebot CRM" }).getByRole("button", { name: "Configurar agente" }).click();
+    await expect(page.getByText("Opções de agente")).toBeVisible();
+    await page.getByLabel("Nome do agente").fill("Agente CRM");
+    await page.getByRole("button", { name: "Adicionar opção" }).click();
+    await expect(page.getByLabel("Identificador").first()).toBeVisible();
   });
 
   test("canais conecta o WhatsApp via QR code da Evolution API", async ({ page }) => {
@@ -175,12 +181,12 @@ test.describe("Módulos de comunicação, clínica e sistema", () => {
     await expect(page.getByText("Configurações de aparência salvas.")).toBeVisible();
   });
 
-  test("ajuda expande artigos e busca por termo", async ({ page }) => {
+  test("ajuda assiste vídeos e busca por termo", async ({ page }) => {
     await page.goto("/ajuda");
-    await page.getByRole("button", { name: "O que acontece se o bot não souber responder?" }).click();
-    await expect(page.getByText(/limite em OpenIA/)).toBeVisible();
-    await page.getByPlaceholder("Buscar na ajuda…").fill("LGPD");
-    await expect(page.getByText("Como a Ê-Bot trata os dados dos pacientes?")).toBeVisible();
-    await expect(page.getByRole("button", { name: "Como conectar o WhatsApp da unidade?" })).toHaveCount(0);
+    await page.locator("[data-help-video]").first().click();
+    await expect(page.getByText("Recomendados")).toBeVisible();
+    await expect(page.getByText("Resposta em texto")).toBeVisible();
+    await page.getByPlaceholder("Buscar vídeos e respostas…").fill("LGPD");
+    await expect(page.getByText("LGPD na prática clínica")).toBeVisible();
   });
 });

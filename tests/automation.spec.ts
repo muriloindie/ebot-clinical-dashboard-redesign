@@ -61,11 +61,16 @@ test.describe("Módulo de automação", () => {
     await expect(page.getByText("Detectadas no texto:")).toBeVisible();
   });
 
-  test("openai renderiza assistentes e abre configurações", async ({ page }) => {
+  test("openai gerencia prompts com fila e voz", async ({ page }) => {
     await page.goto("/openai");
-    await expect(page.getByRole("heading", { name: "OpenIA" })).toBeVisible();
-    await expect(page.getByText("Atendimento geral")).toBeVisible();
-    await page.getByRole("button", { name: "Configurar" }).first().click();
-    await expect(page.getByText("Persona e instruções iniciais")).toBeVisible();
+    await expect(page.getByRole("heading", { name: "OpenAI — Prompts" })).toBeVisible();
+    await expect(page.getByText("Triagem de recepção")).toBeVisible();
+    await page.getByRole("button", { name: "Adicionar Prompt" }).first().click();
+    await page.getByLabel("Nome").fill("Prompt de teste");
+    await page.getByLabel("API Key").fill("sk-teste");
+    await page.getByLabel("Prompt").fill("Responda com objetividade.");
+    await expect(page.getByLabel("Voz")).toBeVisible();
+    await page.getByLabel("Voz").selectOption("voz");
+    await expect(page.getByLabel("Voz (OpenAI)")).toBeVisible();
   });
 });

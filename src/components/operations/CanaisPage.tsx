@@ -1,12 +1,13 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { CheckCircle2, Instagram, Mail, MessageCircle, PhoneCall, PlugZap, Power, QrCode, RefreshCw, Smartphone, Unplug } from "lucide-react";
+import { CheckCircle2, Instagram, Mail, MessageCircle, PlugZap, Power, QrCode, RefreshCw, Smartphone, Unplug } from "lucide-react";
 import { useDemo } from "@/components/state/DemoProvider";
 import { Button } from "@/components/ui/Button";
 import { Modal } from "@/components/ui/Modal";
 import { PageHeader } from "@/components/ui/Week1Primitives";
-import { StatStrip, type StatItem } from "@/components/ui/StatStrip";
+import { Toggle } from "@/components/ui/Toggle";
+import { BrandChannelIcon, type BrandChannel } from "@/components/ui/BrandChannelIcon";
 import { cn } from "@/lib/cn";
 
 type ChannelKind = "whatsapp-meta" | "whatsapp-evolution" | "instagram" | "email";
@@ -21,13 +22,16 @@ type Channel = {
   fields: Record<string, string>;
   status: ChannelStatus;
   qr?: boolean;
+  queue: string;
   agents: number;
   messages7d: number;
+  messagesToday: number;
   createdAt: string;
 };
 
 type Preset = {
   id: ChannelKind;
+  brand: BrandChannel;
   label: string;
   hint: string;
   icon: typeof MessageCircle;
@@ -39,6 +43,7 @@ type Preset = {
 const PRESETS: Preset[] = [
   {
     id: "whatsapp-meta",
+    brand: "whatsapp",
     label: "WhatsApp — API oficial",
     hint: "Meta Cloud API, recomendada para escalar",
     icon: MessageCircle,
@@ -54,6 +59,7 @@ const PRESETS: Preset[] = [
   },
   {
     id: "whatsapp-evolution",
+    brand: "whatsapp",
     label: "WhatsApp — Evolution API",
     hint: "Conexão local por QR code",
     icon: Smartphone,
@@ -69,6 +75,7 @@ const PRESETS: Preset[] = [
   },
   {
     id: "instagram",
+    brand: "instagram",
     label: "Instagram",
     hint: "Direct da clínica conectado ao Ê-Bot",
     icon: Instagram,
@@ -82,6 +89,7 @@ const PRESETS: Preset[] = [
   },
   {
     id: "email",
+    brand: "email",
     label: "E-mail",
     hint: "Caixa de atendimento por e-mail",
     icon: Mail,
@@ -95,18 +103,33 @@ const PRESETS: Preset[] = [
   }
 ];
 
+type ChannelTone = "connected" | "disconnected" | "other";
+
+const statusTone: Record<ChannelStatus, ChannelTone> = {
+  connected: "connected",
+  disconnected: "disconnected",
+  attention: "other",
+  connecting: "other"
+};
+
+const toneMeta: Record<ChannelTone, { label: string; chip: string; dot: string; bar: string }> = {
+  connected: { label: "Conectado", chip: "bg-clinical-green/[0.12] text-clinical-green", dot: "bg-clinical-green", bar: "bg-clinical-green" },
+  disconnected: { label: "Desconectado", chip: "bg-clinical-red/[0.10] text-clinical-red", dot: "bg-clinical-red", bar: "bg-clinical-red" },
+  other: { label: "Atenção", chip: "bg-clinical-orange/[0.12] text-clinical-orange", dot: "bg-clinical-orange animate-pulse", bar: "bg-clinical-orange" }
+};
+
 const statusMeta: Record<ChannelStatus, { label: string; chip: string; dot: string }> = {
   connected: { label: "Conectado", chip: "bg-clinical-green/[0.12] text-clinical-green", dot: "bg-clinical-green" },
   attention: { label: "Atenção", chip: "bg-clinical-orange/[0.12] text-clinical-orange", dot: "bg-clinical-orange animate-pulse" },
-  connecting: { label: "Conectando…", chip: "bg-clinical-blue/[0.10] text-clinical-blueText", dot: "bg-clinical-blue animate-pulse" },
+  connecting: { label: "Conectando…", chip: "bg-clinical-orange/[0.12] text-clinical-orange", dot: "bg-clinical-orange animate-pulse" },
   disconnected: { label: "Desconectado", chip: "bg-clinical-red/[0.10] text-clinical-red", dot: "bg-clinical-red" }
 };
 
 const SEED_CHANNELS: Channel[] = [
-  { id: "chn-wh-principal", name: "WhatsApp Principal", kind: "whatsapp-meta", provider: "Meta Cloud API", number: "+55 11 91234-5678", fields: {}, status: "connected", agents: 6, messages7d: 1284, createdAt: "há 34 dias" },
-  { id: "chn-evolution-leste", name: "WhatsApp Unidade Leste", kind: "whatsapp-evolution", provider: "Evolution API", number: "+55 11 98765-4321", fields: {}, status: "connected", qr: true, agents: 3, messages7d: 642, createdAt: "há 12 dias" },
-  { id: "chn-ig", name: "Instagram da clínica", kind: "instagram", provider: "Meta", number: "@ebot.clinical", fields: {}, status: "attention", agents: 2, messages7d: 118, createdAt: "há 21 dias" },
-  { id: "chn-email", name: "E-mail de atendimento", kind: "email", provider: "SMTP/IMAP", number: "atendimento@ebotclinical.com.br", fields: {}, status: "connected", agents: 2, messages7d: 89, createdAt: "há 41 dias" }
+  { id: "chn-wh-principal", name: "WhatsApp Principal", kind: "whatsapp-meta", provider: "Meta Cloud API", number: "+55 11 91234-5678", fields: {}, status: "connected", queue: "Recepção geral", agents: 6, messages7d: 1284, messagesToday: 213, createdAt: "há 34 dias" },
+  { id: "chn-evolution-leste", name: "WhatsApp Unidade Leste", kind: "whatsapp-evolution", provider: "Evolution API", number: "+55 11 98765-4321", fields: {}, status: "connected", qr: true, queue: "Triagem de novos", agents: 3, messages7d: 642, messagesToday: 96, createdAt: "há 12 dias" },
+  { id: "chn-ig", name: "Instagram da clínica", kind: "instagram", provider: "Meta", number: "@ebot.clinical", fields: {}, status: "attention", queue: "Dermatologia", agents: 2, messages7d: 118, messagesToday: 12, createdAt: "há 21 dias" },
+  { id: "chn-email", name: "E-mail de atendimento", kind: "email", provider: "SMTP/IMAP", number: "atendimento@ebotclinical.com.br", fields: {}, status: "connected", queue: "Financeiro", agents: 2, messages7d: 89, messagesToday: 7, createdAt: "há 41 dias" }
 ];
 
 function hashSeed(value: string) {
@@ -156,11 +179,7 @@ export function CanaisPage() {
   const preset = PRESETS.find((item) => item.id === presetId) ?? PRESETS[0];
   const qrModulesGrid = useMemo(() => qrModules(draft.name || preset.label || "ebot"), [draft.name, preset.label]);
 
-  const stats: StatItem[] = useMemo(() => [
-    { id: "active", label: "Canais ativos", value: String(channels.filter((channel) => channel.status === "connected").length), hint: `de ${channels.length} conectáveis`, tone: "green", icon: PlugZap },
-    { id: "connecting", label: "Conectando agora", value: String(channels.filter((channel) => channel.status === "connecting").length), hint: "aguardando leitura do QR", tone: "blue", icon: QrCode },
-    { id: "messages", label: "Mensagens (7 dias)", value: String(channels.reduce((total, channel) => total + channel.messages7d, 0)), hint: "em todos os canais", tone: "orange", icon: PhoneCall }
-  ], [channels]);
+  const connectedCount = channels.filter((channel) => channel.status === "connected").length;
 
   function openCreate() {
     setPresetId("whatsapp-meta");
@@ -201,8 +220,10 @@ export function CanaisPage() {
       fields: { ...draft, name: draft.name.trim() },
       status: preset.id === "whatsapp-evolution" ? "connecting" : "disconnected",
       qr: preset.id === "whatsapp-evolution",
+      queue: "Triagem de novos",
       agents: 0,
       messages7d: 0,
+      messagesToday: 0,
       createdAt: "agora"
     };
     setChannels((current) => [...current, channel]);
@@ -240,8 +261,10 @@ export function CanaisPage() {
       fields: { ...draft },
       status: "connected",
       qr: true,
+      queue: "Triagem de novos",
       agents: 0,
       messages7d: 0,
+      messagesToday: 0,
       createdAt: "agora"
     };
     setChannels((current) => [...current, channel]);
@@ -268,25 +291,30 @@ export function CanaisPage() {
         eyebrow="Comunicação / Canais"
         title="Canais"
         description="WhatsApp, Instagram e e-mail conectados ao Ê-Bot. Cada canal entrega conversas para as filas de atendimento."
+        aside={<span className="inline-flex items-center gap-2 rounded-full bg-clinical-green/[0.09] px-3 py-2 text-xs font-extrabold text-clinical-green"><PlugZap className="size-4" />{connectedCount} conectados de {channels.length}</span>}
         action={<Button onClick={openCreate}><PlugZap className="size-4" />Conectar canal</Button>}
       />
 
-      <StatStrip items={stats} />
-
-      <div className="grid gap-4 lg:grid-cols-2">
+      <div data-channel-list className="grid max-w-[1440px] grid-cols-1 justify-start gap-3 sm:grid-cols-[repeat(auto-fit,minmax(260px,320px))]">
         {channels.map((channel) => {
           const meta = statusMeta[channel.status];
-          const Icon = PRESETS.find((item) => item.id === channel.kind)?.icon ?? MessageCircle;
+          const tone = toneMeta[statusTone[channel.status]];
+          const presetMeta = PRESETS.find((item) => item.id === channel.kind);
+          const accent = presetMeta?.color ?? "#3A9DCA";
+          const brand = presetMeta?.brand ?? "whatsapp";
+          const online = channel.status === "connected";
           return (
-            <article key={channel.id} className="rounded-[24px] border border-clinical-border/[0.14] bg-clinical-surface/80 p-5 shadow-[0_8px_24px_rgba(38,53,50,0.04)]">
+            <article key={channel.id} data-channel-card data-channel-id={channel.id} data-channel-kind={channel.kind} data-channel-tone={statusTone[channel.status]} className={cn("overflow-hidden rounded-[20px] border bg-clinical-surface/80 shadow-[0_8px_24px_rgba(38,53,50,0.04)] transition hover:-translate-y-0.5 hover:shadow-card", channel.status === "attention" || channel.status === "connecting" ? "border-clinical-orange/30" : channel.status === "disconnected" ? "border-clinical-red/25" : "border-clinical-border/[0.14]")}>
+              <span className={cn("block h-1 w-full", tone.bar)} aria-hidden="true" />
+              <div className="p-4">
               <div className="flex items-start justify-between gap-3">
                 <div className="flex items-center gap-3">
-                  <span className={cn("flex size-11 items-center justify-center rounded-2xl", channel.kind === "whatsapp-evolution" ? "bg-clinical-blue/[0.10] text-clinical-blueText" : "bg-clinical-surfaceMuted text-clinical-slate")}>
-                    <Icon className="size-5" />
+                  <span className="flex size-10 items-center justify-center rounded-2xl" style={{ backgroundColor: `${accent}1E`, color: accent }}>
+                    <BrandChannelIcon brand={brand} className="size-5" />
                   </span>
                   <div>
                     <h3 className="text-sm font-extrabold text-clinical-dark">{channel.name}</h3>
-                    <p className="text-[11px] font-bold text-clinical-muted">{channel.provider} · {channel.number}</p>
+                    <p className="text-[11px] font-bold text-clinical-muted">{channel.provider}</p>
                   </div>
                 </div>
                 <span className={cn("flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-[11px] font-extrabold", meta.chip)}>
@@ -295,8 +323,14 @@ export function CanaisPage() {
                 </span>
               </div>
 
+              <dl className="mt-3 space-y-1.5 rounded-2xl border border-clinical-border/[0.10] bg-clinical-surfaceMuted/30 px-3 py-2.5 text-[12px] font-bold">
+                <div className="flex items-center justify-between gap-2"><dt className="uppercase tracking-wider text-clinical-muted">Conexão</dt><dd className="truncate text-clinical-dark">{channel.number}</dd></div>
+                <div className="flex items-center justify-between gap-2"><dt className="uppercase tracking-wider text-clinical-muted">Fila</dt><dd className="truncate text-clinical-dark">{channel.queue}</dd></div>
+                <div className="flex items-center justify-between gap-2"><dt className="uppercase tracking-wider text-clinical-muted">Atividade</dt><dd className="tabular-nums text-clinical-dark">{channel.agents} atendentes · {channel.messagesToday} hoje</dd></div>
+              </dl>
+
               {channel.qr && (
-                <button onClick={() => openView(channel)} className="mt-4 flex w-full items-center gap-3 rounded-2xl border border-clinical-border/[0.12] bg-clinical-surfaceMuted/30 p-3 text-left transition hover:border-clinical-blue/35">
+                <button type="button" onClick={() => openView(channel)} className="mt-3 flex w-full items-center gap-3 rounded-2xl border border-clinical-border/[0.12] bg-clinical-surfaceMuted/30 p-2.5 text-left transition hover:border-clinical-blue/35">
                   <div className="grid shrink-0 grid-cols-7 gap-0 rounded-lg bg-white p-1.5 shadow-[0_4px_12px_rgba(38,53,50,0.10)]">
                     {qrModules(channel.id).slice(7, 14).map((line, row) =>
                       line.slice(7, 14).map((filled, col) => (
@@ -318,16 +352,27 @@ export function CanaisPage() {
                   <p className="text-[10px] font-bold text-clinical-muted">Atendentes</p>
                 </div>
                 <div className="rounded-xl bg-clinical-surfaceMuted/30 px-2.5 py-2 text-center">
+                  <p className="text-[13px] font-extrabold text-clinical-dark">{channel.messagesToday}</p>
+                  <p className="text-[10px] font-bold text-clinical-muted">Msgs hoje</p>
+                </div>
+                <div className="rounded-xl bg-clinical-surfaceMuted/30 px-2.5 py-2 text-center">
                   <p className="text-[13px] font-extrabold text-clinical-dark">{channel.messages7d}</p>
                   <p className="text-[10px] font-bold text-clinical-muted">Msgs 7 dias</p>
                 </div>
-                <div className="rounded-xl bg-clinical-surfaceMuted/30 px-2.5 py-2 text-center">
-                  <p className="text-[13px] font-extrabold text-clinical-dark">—</p>
-                  <p className="text-[10px] font-bold text-clinical-muted">{channel.createdAt}</p>
-                </div>
               </div>
 
-              <div className="mt-4 flex flex-wrap gap-2">
+              <Toggle
+                className="mt-3"
+                checked={online}
+                onChange={() => (online ? disconnect(channel) : test(channel))}
+                label="Canal em operação"
+                statusOn="Em operação"
+                statusOff="Fora de operação"
+                icon={Power}
+                accent={channel.status === "disconnected" ? "amber" : "green"}
+              />
+
+              <div className="mt-3 flex flex-wrap gap-2 border-t border-clinical-border/[0.10] pt-3">
                 {channel.status === "connecting" ? (
                   <>
                     <Button size="sm" onClick={() => openView(channel)}><QrCode className="size-3.5" />Ver QR code</Button>
@@ -345,6 +390,7 @@ export function CanaisPage() {
                   </>
                 )}
               </div>
+              </div>
             </article>
           );
         })}
@@ -360,12 +406,11 @@ export function CanaisPage() {
           {!viewing && (
             <div className="grid gap-2 sm:grid-cols-2">
               {PRESETS.map((item) => {
-                const Icon = item.icon;
                 return (
-                  <button key={item.id} onClick={() => { setPresetId(item.id); setDraft({}); setQrRequested(false); }} className={cn("rounded-2xl border p-3 text-left transition", presetId === item.id ? "border-clinical-blue/60 bg-clinical-blue/[0.06]" : "border-clinical-border/[0.14] bg-clinical-surfaceMuted/35 hover:border-clinical-blue/30")}>
+                  <button type="button" key={item.id} onClick={() => { setPresetId(item.id); setDraft({}); setQrRequested(false); }} className={cn("rounded-2xl border p-3 text-left transition", presetId === item.id ? "border-clinical-blue/60 bg-clinical-blue/[0.06]" : "border-clinical-border/[0.14] bg-clinical-surfaceMuted/35 hover:border-clinical-blue/30")}>
                     <span className="flex items-center gap-2">
                       <span className="flex size-8 shrink-0 items-center justify-center rounded-xl" style={{ backgroundColor: `${item.color}22`, color: item.color }}>
-                        <Icon className="size-4" />
+                        <BrandChannelIcon brand={item.brand} className="size-4" />
                       </span>
                       <span className="text-[12px] font-extrabold leading-tight text-clinical-dark">{item.label}</span>
                     </span>

@@ -3,15 +3,34 @@ import type {
   AppConfigSection,
   Campaign,
   CampaignSettings,
+  ContactEntry,
   ContactList,
   HelpTopic,
+  HelpVideo,
   Integration,
   Invoice,
   PermissionMatrix,
   Queue,
   Sector,
-  StaffUser
+  StaffUser,
+  TypebotIntegration
 } from "@/lib/company/types";
+import { defaultQueueSchedule } from "@/lib/company/types";
+
+const fullSchedule = defaultQueueSchedule();
+const weekdaySchedule = defaultQueueSchedule().slice(0, 5).map((slot) => ({ ...slot }));
+const eveningSchedule = defaultQueueSchedule().map((slot) => ({ ...slot, start: "18:00", end: "23:00", enabled: slot.day !== "Domingo" }));
+
+export const seedContactEntries: ContactEntry[] = [
+  { id: "ent-1", listId: "list-1", name: "Amanda Souza", phone: "+55 46 99111-0101", channel: "WhatsApp", consent: true, addedAt: "01 ago 2026", addedBy: "Sincronização" },
+  { id: "ent-2", listId: "list-1", name: "Carlos Eduardo Santos", phone: "+55 46 99111-0202", channel: "WhatsApp", consent: true, addedAt: "01 ago 2026", addedBy: "Sincronização" },
+  { id: "ent-3", listId: "list-1", name: "Fernanda Lima", phone: "+55 46 99111-0303", channel: "WhatsApp", consent: true, addedAt: "03 ago 2026", addedBy: "Marina Costa" },
+  { id: "ent-4", listId: "list-1", name: "José Ricardo Alves", phone: "+55 46 99111-0404", channel: "WhatsApp", consent: false, addedAt: "05 ago 2026", addedBy: "Sincronização" },
+  { id: "ent-5", listId: "list-2", name: "Beatriz Ferreira", phone: "+55 46 99111-0505", channel: "WhatsApp", consent: true, addedAt: "01 set 2026", addedBy: "IA de campanhas" },
+  { id: "ent-6", listId: "list-2", name: "Juliana Martins", phone: "+55 46 99111-0606", channel: "WhatsApp", consent: true, addedAt: "01 set 2026", addedBy: "IA de campanhas" },
+  { id: "ent-7", listId: "list-4", name: "Patrícia Gomes", phone: "@patricia.gomes", channel: "Instagram", consent: true, addedAt: "10 ago 2026", addedBy: "Julia Alves" },
+  { id: "ent-8", listId: "list-4", name: "Henrique Barros", phone: "@henrique.barros", channel: "Instagram", consent: false, addedAt: "12 ago 2026", addedBy: "Julia Alves" }
+];
 
 export const seedCampaigns: Campaign[] = [
   {
@@ -150,13 +169,14 @@ export const seedSectors: Sector[] = [
 ];
 
 export const seedQueues: Queue[] = [
-  { id: "que-1", name: "Recepção geral", color: "#3A9DCA", sectorId: "sec-1", sectorName: "Atendimento", botOrder: 1, greeting: "Olá! Sou a recepção virtual da Ê-Bot Clinical. Como posso ajudar?", maxWaitSeconds: 300, priority: "alta", activeAgents: 3, totalAgents: 4, active: true },
-  { id: "que-2", name: "Triagem de novos", color: "#4CB782", sectorId: "sec-1", sectorName: "Atendimento", botOrder: 2, greeting: "Antes de agendar, preciso fazer algumas perguntas rápidas de triagem.", maxWaitSeconds: 600, priority: "normal", activeAgents: 1, totalAgents: 2, active: true },
-  { id: "que-3", name: "Cardiologia — consultas", color: "#E2574C", sectorId: "sec-2", sectorName: "Cardiologia", botOrder: 1, greeting: "Você está na fila de Cardiologia. Em breve uma atendente responde.", maxWaitSeconds: 420, priority: "alta", activeAgents: 2, totalAgents: 3, active: true },
-  { id: "que-4", name: "Cardiologia — exames", color: "#F2A34D", sectorId: "sec-2", sectorName: "Cardiologia", botOrder: 2, greeting: "Fila de exames cardiológicos. Verificamos sua disponibilidade.", maxWaitSeconds: 480, priority: "media", activeAgents: 1, totalAgents: 1, active: true },
-  { id: "que-5", name: "Dermatologia", color: "#F2A34D", sectorId: "sec-3", sectorName: "Dermatologia", botOrder: 1, greeting: "Olá! Em que posso ajudar com sua pele e saúde?", maxWaitSeconds: 540, priority: "media", activeAgents: 1, totalAgents: 2, active: true },
-  { id: "que-6", name: "Exames e resultados", color: "#4CB782", sectorId: "sec-4", sectorName: "Exames", botOrder: 1, greeting: "Fila de exames. Orientamos preparo e resultados por aqui.", maxWaitSeconds: 360, priority: "media", activeAgents: 2, totalAgents: 3, active: true },
-  { id: "que-7", name: "Financeiro", color: "#8E6FBD", sectorId: "sec-5", sectorName: "Financeiro", botOrder: 1, greeting: "Conversa com o setor financeiro. Um instante, por favor.", maxWaitSeconds: 900, priority: "normal", activeAgents: 1, totalAgents: 1, active: true }
+  { id: "que-1", name: "Recepção geral", color: "#3A9DCA", sectorId: "sec-1", sectorName: "Atendimento", botOrder: 1, greeting: "Olá! Sou a recepção virtual da Ê-Bot Clinical. Como posso ajudar?", maxWaitSeconds: 300, priority: "alta", activeAgents: 3, totalAgents: 4, active: true, botTransfers: true, integration: "WhatsApp — Unidade Centro", prompt: "Triagem de recepção v3", outOfHoursMessage: "Nosso horário de atendimento é de segunda a sexta, das 8h às 18h. Deixe sua mensagem que retornaremos!", options: [], schedule: fullSchedule },
+  { id: "que-2", name: "Triagem de novos", color: "#4CB782", sectorId: "sec-1", sectorName: "Atendimento", botOrder: 2, greeting: "Antes de agendar, preciso fazer algumas perguntas rápidas de triagem.", maxWaitSeconds: 600, priority: "normal", activeAgents: 1, totalAgents: 2, active: true, botTransfers: true, integration: "WhatsApp — Unidade Centro", prompt: "Triagem de novos pacientes v2", outOfHoursMessage: "A triagem automática funciona 24/7. Nossa equipe responde em horário comercial.", options: [], schedule: fullSchedule },
+  { id: "que-3", name: "Cardiologia — consultas", color: "#E2574C", sectorId: "sec-2", sectorName: "Cardiologia", botOrder: 1, greeting: "Você está na fila de Cardiologia. Em breve uma atendente responde.", maxWaitSeconds: 420, priority: "alta", activeAgents: 2, totalAgents: 3, active: true, botTransfers: true, integration: "WhatsApp — Unidade Centro", prompt: "Atendimento cardiológico v1", outOfHoursMessage: "A fila de Cardiologia atende em horário comercial. Em emergências, procure o pronto atendimento.", options: [], schedule: weekdaySchedule },
+  { id: "que-4", name: "Cardiologia — exames", color: "#F2A34D", sectorId: "sec-2", sectorName: "Cardiologia", botOrder: 2, greeting: "Fila de exames cardiológicos. Verificamos sua disponibilidade.", maxWaitSeconds: 480, priority: "media", activeAgents: 1, totalAgents: 1, active: true, botTransfers: false, integration: "WhatsApp — Unidade Centro", prompt: "Orientação de exames v4", outOfHoursMessage: "Exames são agendados em horário comercial. Verifique o preparo no portal do paciente.", options: [], schedule: weekdaySchedule },
+  { id: "que-5", name: "Dermatologia", color: "#F2A34D", sectorId: "sec-3", sectorName: "Dermatologia", botOrder: 1, greeting: "Olá! Em que posso ajudar com sua pele e saúde?", maxWaitSeconds: 540, priority: "media", activeAgents: 1, totalAgents: 2, active: true, botTransfers: true, integration: "Instagram Direct", prompt: "Dermatologia acolhimento v2", outOfHoursMessage: "Responderemos sua mensagem no próximo horário comercial. Até logo!", options: [], schedule: weekdaySchedule },
+  { id: "que-6", name: "Exames e resultados", color: "#4CB782", sectorId: "sec-4", sectorName: "Exames", botOrder: 1, greeting: "Fila de exames. Orientamos preparo e resultados por aqui.", maxWaitSeconds: 360, priority: "media", activeAgents: 2, totalAgents: 3, active: true, botTransfers: true, integration: "API do laboratório", prompt: "Exames e resultados v3", outOfHoursMessage: "Os resultados são liberados pelo laboratório em até 48h úteis. Acompanhe pelo portal.", options: [], schedule: fullSchedule },
+  { id: "que-7", name: "Financeiro", color: "#8E6FBD", sectorId: "sec-5", sectorName: "Financeiro", botOrder: 1, greeting: "Conversa com o setor financeiro. Um instante, por favor.", maxWaitSeconds: 900, priority: "normal", activeAgents: 1, totalAgents: 1, active: true, botTransfers: false, integration: "WhatsApp — Unidade Centro", prompt: "Financeiro e convênios v1", outOfHoursMessage: "O setor financeiro atende de segunda a sexta, das 9h às 18h.", options: [], schedule: weekdaySchedule },
+  { id: "que-8", name: "Plantão noturno", color: "#5A7873", sectorId: "sec-6", sectorName: "Atendimento noturno", botOrder: 1, greeting: "Atendimento noturno da Ê-Bot Clinical. Como podemos ajudar?", maxWaitSeconds: 600, priority: "normal", activeAgents: 0, totalAgents: 2, active: false, botTransfers: true, integration: "WhatsApp — Unidade Norte", prompt: "Plantão noturno v1", outOfHoursMessage: "Estamos disponíveis das 18h às 23h. Para emergências, ligue para o número da unidade.", options: [], schedule: eveningSchedule }
 ];
 
 export const seedUsers: StaffUser[] = [
@@ -251,6 +271,75 @@ export const seedHelpTopics: HelpTopic[] = [
   { id: "help-8", question: "Como a Ê-Bot trata os dados dos pacientes?", answer: "Seguimos princípios LGPD: consentimentos estruturados, retenção por política, auditoria de acesso e minimização de dados.", category: "LGPD" }
 ];
 
+export const seedTypebotIntegrations: TypebotIntegration[] = [
+  {
+    id: "tb-1",
+    name: "Recepção — Typebot principal",
+    url: "https://typebot.ebotclinical.com.br",
+    slug: "recepcao-principal",
+    expireMinutes: 30,
+    messageIntervalMs: 1200,
+    finishWord: "#sair",
+    restartWord: "#reiniciar",
+    invalidOptionMessage: "Opção inválida. Escolha uma das alternativas enviadas.",
+    restartMessage: "Conversa reiniciada. Vamos começar de novo?",
+    status: "connected",
+    lastSync: "agora",
+    agent: {
+      agentName: "Recepcionista virtual",
+      companyName: "Ê-Bot Clinical",
+      companyDescription: "Clínica multidisciplinar com unidades Centro, Norte e Sul.",
+      businessRules: "Nunca diagnosticar. Confirmar convênio antes de agendar. Priorizar urgências.",
+      companyContext: "Atendimento de segunda a sexta, 8h às 18h. Plantão noturno até 23h.",
+      extraInfo: "Estacionamento conveniado na Unidade Centro.",
+      welcomeMessage: "Olá! Sou a recepção virtual da Ê-Bot Clinical. Como posso ajudar?",
+      queueIntegrationId: "que-1",
+      options: [
+        { id: "opt-1", order: 1, identifier: "agendar", key: "1", description: "Agendar consulta" },
+        { id: "opt-2", order: 2, identifier: "exames", key: "2", description: "Exames e resultados" },
+        { id: "opt-3", order: 3, identifier: "humano", key: "3", description: "Falar com atendente" }
+      ]
+    }
+  },
+  {
+    id: "tb-2",
+    name: "Exames — Typebot laboratorial",
+    url: "https://typebot.ebotclinical.com.br",
+    slug: "exames-lab",
+    expireMinutes: 45,
+    messageIntervalMs: 1500,
+    finishWord: "#fim",
+    restartWord: "#voltar",
+    invalidOptionMessage: "Não entendi. Digite o número da opção desejada.",
+    restartMessage: "Fluxo de exames reiniciado.",
+    status: "attention",
+    lastSync: "há 2 horas",
+    agent: {
+      agentName: "Assistente de exames",
+      companyName: "Ê-Bot Clinical",
+      companyDescription: "Clínica multidisciplinar com laboratório parceiro.",
+      businessRules: "Nunca interpretar laudos. Confirmar jejum antes de agendar coleta.",
+      companyContext: "Coletas de segunda a sábado, 7h às 11h.",
+      extraInfo: "",
+      welcomeMessage: "Olá! Vamos cuidar dos seus exames. O que você precisa?",
+      queueIntegrationId: "que-6",
+      options: [
+        { id: "opt-4", order: 1, identifier: "preparo", key: "1", description: "Orientações de preparo" },
+        { id: "opt-5", order: 2, identifier: "resultado", key: "2", description: "Consultar resultado" }
+      ]
+    }
+  }
+];
+
+export const seedHelpVideos: HelpVideo[] = [
+  { id: "hv-1", title: "Como conectar o WhatsApp da unidade", description: "Passo a passo para conectar o canal oficial via QR Code e validar o webhook de eventos.", category: "Canais", videoUrl: "https://www.youtube.com/embed/dQw4w9WgXcQ", duration: "04:32", icon: "MessageCircle", views: 1284, featured: true, createdAt: "há 1 semana" },
+  { id: "hv-2", title: "Criando sua primeira campanha", description: "Da lista de contatos ao envio: janela, limite diário e acompanhamento de respostas.", category: "Campanhas", videoUrl: "https://www.youtube.com/embed/dQw4w9WgXcQ", duration: "06:10", icon: "Megaphone", views: 862, featured: true, createdAt: "há 2 semanas" },
+  { id: "hv-3", title: "Configurando prompts da OpenAI", description: "Fila vinculada, voz ou texto, temperatura e histórico de mensagens na medida certa.", category: "Automação", videoUrl: "https://www.youtube.com/embed/dQw4w9WgXcQ", duration: "08:45", icon: "Sparkles", views: 640, featured: false, createdAt: "há 3 semanas" },
+  { id: "hv-4", title: "Agenda Google sem conflito", description: "Seleção de agendas, verificação de conexão e criação de eventos com contatos.", category: "Agenda", videoUrl: "https://www.youtube.com/embed/dQw4w9WgXcQ", duration: "05:27", icon: "CalendarDays", views: 418, featured: false, createdAt: "há 1 mês" },
+  { id: "hv-5", title: "Filas e horários de atendimento", description: "Ordem do bot, transferências, mensagens fora de expediente e grade semanal.", category: "Filas", videoUrl: "https://www.youtube.com/embed/dQw4w9WgXcQ", duration: "07:03", icon: "ListOrdered", views: 355, featured: false, createdAt: "há 1 mês" },
+  { id: "hv-6", title: "LGPD na prática clínica", description: "Consentimento, opt-in de campanhas e bloqueio de dados sensíveis.", category: "LGPD", videoUrl: "https://www.youtube.com/embed/dQw4w9WgXcQ", duration: "09:51", icon: "ShieldCheck", views: 502, featured: false, createdAt: "há 2 meses" }
+];
+
 export const seedConfig: Record<AppConfigSection, Record<string, string | boolean | number>> = {
   geral: {
     clinicName: "Ê-Bot Clinical — Unidade Centro",
@@ -280,5 +369,13 @@ export const seedConfig: Record<AppConfigSection, Record<string, string | boolea
     twoFactor: true,
     auditLog: true,
     dataRetention: "20 anos (prontuário)"
+  },
+  ia: {
+    aiEnabled: true,
+    aiModel: "GPT 5.5 Fast",
+    aiTone: "Acolhedor e objetivo",
+    handoffThreshold: 72,
+    aiGreeting: "Olá! Sou a assistente virtual da clínica. Em que posso ajudar hoje?",
+    aiSignature: "Ê-Bot Clinical"
   }
 };

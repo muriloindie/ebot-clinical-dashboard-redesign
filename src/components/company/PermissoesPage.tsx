@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import { Eye, Pencil, PencilLine, Plus, RotateCcw, Shield, ShieldCheck, Square, Trash2, UserRound, UsersRound } from "lucide-react";
 import { deletePermissionMatrix, listPermissionMatrix, newCompanyId, savePermissionMatrix } from "@/lib/company/companyService";
 import type { PermissionMatrix } from "@/lib/company/types";
@@ -9,7 +9,6 @@ import { Button } from "@/components/ui/Button";
 import { ConfirmationDialog } from "@/components/ui/ConfirmationDialog";
 import { Modal } from "@/components/ui/Modal";
 import { PageHeader } from "@/components/ui/Week1Primitives";
-import { StatStrip, type StatItem } from "@/components/ui/StatStrip";
 import { cn } from "@/lib/cn";
 
 const MODULES = ["Dashboard", "Atendimentos", "Agenda", "Pacientes", "Arquivos", "Campanhas", "Automação", "Financeiro", "Usuários", "Configurações"] as const;
@@ -29,16 +28,23 @@ const noAccessModules = (): Record<string, Level> => Object.fromEntries(MODULES.
 type RoleDraft = { roleId: string; roleName: string; description: string };
 
 export function PermissoesPage() {
+  return (
+    <div className="space-y-4">
+      <PageHeader
+        eyebrow="Clínica / Governança"
+        title="Permissões"
+        description="Matriz de acesso por papel: toque em um nível para alternar entre sem acesso, leitura, edição e total. Cada mudança vale imediatamente."
+      />
+      <PermissoesPanel />
+    </div>
+  );
+}
+
+export function PermissoesPanel() {
   const { toast } = useDemo();
   const [matrix, setMatrix] = useState<PermissionMatrix[]>(() => listPermissionMatrix());
   const [draft, setDraft] = useState<RoleDraft | null>(null);
   const [deleting, setDeleting] = useState<PermissionMatrix | null>(null);
-
-  const stats: StatItem[] = useMemo(() => [
-    { id: "roles", label: "Papéis", value: String(matrix.length), hint: "definidos pela unidade", tone: "blue", icon: UserRound },
-    { id: "staff", label: "Membros cobertos", value: String(matrix.reduce((total, role) => total + role.usersCount, 0)), hint: "seguem o papel principal", tone: "teal", icon: UsersRound },
-    { id: "custom", label: "Ajustes manuais", value: String(matrix.reduce((total, role) => total + Object.values(role.modules).filter((level) => level !== "total").length, 0)), hint: "níveis abaixo de total", tone: "orange", icon: Shield }
-  ], [matrix]);
 
   function cycle(role: PermissionMatrix, module: string) {
     const current = role.modules[module] ?? "nenhum";
@@ -97,30 +103,22 @@ export function PermissoesPage() {
 
   return (
     <div className="space-y-4">
-      <PageHeader
-        eyebrow="Clínica / Governança"
-        title="Permissões"
-        description="Matriz de acesso por papel: toque em um nível para alternar entre sem acesso, leitura, edição e total. Cada mudança vale imediatamente."
-        action={
-          <div className="flex flex-wrap gap-2">
-            <Button variant="secondary" onClick={resetAll}><RotateCcw className="size-4" />Restaurar padrão</Button>
-            <Button onClick={() => setDraft({ roleId: "", roleName: "", description: "" })}><Plus className="size-4" />Novo papel</Button>
-          </div>
-        }
-      />
-
-      <StatStrip items={stats} />
-
-      <div className="flex flex-wrap items-center gap-2 rounded-[20px] border border-clinical-border/[0.12] bg-clinical-surface/70 px-4 py-3">
-        <span className="text-[11px] font-extrabold uppercase tracking-[0.09em] text-clinical-muted">Legenda</span>
-        {LEVELS.map((level) => {
-          const Icon = levelMeta[level].icon;
-          return (
-            <span key={level} className={cn("flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-[11px] font-extrabold", levelMeta[level].chip)}>
-              <Icon className="size-3.5" />{levelMeta[level].label}
-            </span>
-          );
-        })}
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <div className="flex flex-wrap items-center gap-2 rounded-[20px] border border-clinical-border/[0.12] bg-clinical-surface/70 px-4 py-3">
+          <span className="text-[11px] font-extrabold uppercase tracking-[0.09em] text-clinical-muted">Legenda</span>
+          {LEVELS.map((level) => {
+            const Icon = levelMeta[level].icon;
+            return (
+              <span key={level} className={cn("flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-[11px] font-extrabold", levelMeta[level].chip)}>
+                <Icon className="size-3.5" />{levelMeta[level].label}
+              </span>
+            );
+          })}
+        </div>
+        <div className="flex flex-wrap gap-2">
+          <Button variant="secondary" onClick={resetAll}><RotateCcw className="size-4" />Restaurar padrão</Button>
+          <Button onClick={() => setDraft({ roleId: "", roleName: "", description: "" })}><Plus className="size-4" />Novo papel</Button>
+        </div>
       </div>
 
       {matrix.length === 0 ? (
