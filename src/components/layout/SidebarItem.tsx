@@ -21,6 +21,7 @@ export function SidebarItem({ item, activeItem, onSelect }: SidebarItemProps) {
   const childActive = item.children?.some((child) => child.id === activeItem) ?? false;
   const active = activeItem === item.id;
   const highlighted = active || childActive;
+  const disabled = !hasChildren && !item.enabled;
 
   useEffect(() => {
     if (childActive) setOpen(true);
@@ -37,20 +38,27 @@ export function SidebarItem({ item, activeItem, onSelect }: SidebarItemProps) {
   }, [open]);
 
   function handleClick() {
+    if (disabled) return;
+    if (hasChildren) {
+      setOpen((current) => !current);
+      return;
+    }
     onSelect(item.id);
-    if (hasChildren) setOpen((current) => !current);
   }
 
   return (
     <div data-sidebar-item>
       <button
         onClick={handleClick}
+        disabled={disabled}
+        aria-disabled={disabled || undefined}
+        title={disabled ? "Disponível em breve" : undefined}
         aria-expanded={hasChildren ? open : undefined}
         className={cn(
           "group flex w-full items-center gap-2.5 rounded-[16px] border px-3 py-2.5 text-left text-[14px] font-bold transition duration-200 ease-out focus:outline-none focus:ring-2 focus:ring-clinical-blue/25",
           highlighted
             ? "border-clinical-blue/20 bg-[#EAF6FB] text-clinical-blueText shadow-[0_10px_22px_rgba(58,157,202,0.08)] dark:bg-clinical-blue/[0.12]"
-            : "border-transparent text-clinical-slate hover:translate-x-[3px] hover:bg-[#F1F8FB] hover:text-clinical-dark dark:hover:bg-white/[0.06]"
+            : disabled ? "border-transparent text-clinical-muted/50" : "border-transparent text-clinical-slate hover:translate-x-[3px] hover:bg-[#F1F8FB] hover:text-clinical-dark dark:hover:bg-white/[0.06]"
         )}
       >
         <Icon className={cn("size-[18px] shrink-0 stroke-[2.05] transition", highlighted ? "text-clinical-blue" : "text-clinical-muted group-hover:text-clinical-blue")} />
@@ -61,7 +69,7 @@ export function SidebarItem({ item, activeItem, onSelect }: SidebarItemProps) {
       </button>
 
       {hasChildren ? (
-        <div ref={submenuRef} className="h-0 overflow-hidden opacity-0">
+        <div ref={submenuRef} className={cn("overflow-hidden", open ? "h-auto opacity-100" : "h-0 opacity-0")}>
           <div className="ml-5 mt-1.5 space-y-1 border-l border-clinical-blue/[0.12] pl-2.5">
             {item.children?.map((child) => (
               <SidebarSubItem key={child.id} item={child} active={activeItem === child.id} onSelect={onSelect} />
