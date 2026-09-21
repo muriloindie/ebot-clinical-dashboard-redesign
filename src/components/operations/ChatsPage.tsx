@@ -358,7 +358,7 @@ export function ChatsPage() {
                 </aside>
               ) : null}
 
-              <div className="chat-dots clinical-scrollbar min-h-0 flex-1 overflow-y-auto p-4 sm:p-5">
+              <div className="chat-pattern clinical-scrollbar min-h-0 flex-1 overflow-y-auto p-4 sm:p-5">
                 {selectedMessages.length ? <div role="log" aria-live="polite" aria-relevant="additions text" aria-label={`Mensagens com ${selected.name}`} className="space-y-3">{selectedMessages.map((message) => <MessageBubble key={message.id} message={message} mine={message.from === "me"} playing={playingId === message.id} onPlay={() => setPlayingId((current) => current === message.id ? null : message.id)} />)}</div> : <StatePanel icon={MessageCircle} title="Comece a conversa" description={`Envie uma mensagem para ${selected.name}. Este chat será mantido localmente nesta sessão.`} />}
               </div>
 

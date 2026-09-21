@@ -158,11 +158,11 @@ export function Sidebar({ activeItem, onChange, mobileOpen = false, onMobileClos
           collapsed ? "w-[104px]" : "w-[304px]"
         )}
       >
-        <div className="sticky top-4 flex h-[calc(100vh-32px)] flex-col overflow-hidden rounded-[32px] border border-[#D8EAF1] bg-[#F7FBFD]/95 shadow-[0_18px_48px_rgba(38,53,50,0.07)] backdrop-blur-2xl dark:border-white/[0.08] dark:bg-[#18211F]/95 dark:shadow-clinical">
+        <div className="sticky top-4 flex h-[calc(100vh-32px)] flex-col overflow-hidden rounded-[32px] border border-[#CBE1EC] bg-[linear-gradient(168deg,rgba(247,251,254,0.96),rgba(224,238,250,0.94))] shadow-[0_18px_48px_rgba(38,53,50,0.07)] backdrop-blur-2xl dark:border-white/[0.08] dark:bg-[linear-gradient(168deg,rgba(21,36,49,0.96),rgba(10,18,26,0.96))] dark:shadow-clinical">
           <div className={cn("flex items-center gap-3 px-5 py-5", collapsed && "justify-center px-3")}> 
-            <div className="relative flex size-12 shrink-0 items-center justify-center overflow-hidden rounded-2xl border border-[#DCECF2] bg-white shadow-[0_12px_30px_rgba(58,157,202,0.12)] dark:border-white/10 dark:shadow-glow">
+            <div className="relative flex size-12 shrink-0 items-center justify-center overflow-hidden rounded-2xl border border-[#CDE3EE] bg-white shadow-[0_12px_30px_rgba(58,157,202,0.12)] dark:border-white/10 dark:shadow-glow">
               <Image src={logo} alt="Ê-Bot Clinical" className="size-8 object-contain" />
-              <span className="absolute -right-1 -top-1 size-3 rounded-full border-2 border-white bg-clinical-green dark:border-[#18211F]" />
+              <span className="absolute -right-1 -top-1 size-3 rounded-full border-2 border-white bg-clinical-green dark:border-[#12202B]" />
             </div>
             {!collapsed ? (
               <div className="overflow-hidden">
@@ -175,7 +175,7 @@ export function Sidebar({ activeItem, onChange, mobileOpen = false, onMobileClos
           <button
             onClick={() => setCollapsed((current) => !current)}
             className={cn(
-              "mx-4 mb-2 flex items-center gap-2 rounded-2xl border border-[#D8EAF1] bg-white/72 px-3 py-2.5 text-[13px] font-bold text-clinical-muted shadow-[0_8px_22px_rgba(38,53,50,0.035)] transition hover:border-clinical-blue/20 hover:bg-[#EEF8FC] hover:text-clinical-blueText focus:outline-none focus:ring-2 focus:ring-clinical-blue/25 dark:border-white/[0.08] dark:bg-white/[0.05] dark:hover:bg-white/[0.08]",
+              "mx-4 mb-2 flex items-center gap-2 rounded-2xl border border-[#CBE1EC] bg-white/72 px-3 py-2.5 text-[13px] font-bold text-clinical-muted shadow-[0_8px_22px_rgba(38,53,50,0.035)] transition hover:border-clinical-blue/20 hover:bg-[#E3F2FA] hover:text-clinical-blueText focus:outline-none focus:ring-2 focus:ring-clinical-blue/25 dark:border-white/[0.08] dark:bg-white/[0.05] dark:hover:bg-white/[0.08]",
               collapsed && "mx-3 justify-center px-2"
             )}
             title={collapsed ? "Expandir menu" : "Recolher menu"}
@@ -201,8 +201,8 @@ export function Sidebar({ activeItem, onChange, mobileOpen = false, onMobileClos
                         className={cn(
                           "flex h-12 w-full items-center justify-center rounded-[16px] border p-2.5 transition focus:outline-none focus:ring-2 focus:ring-clinical-blue/25",
                           active
-                            ? "border-clinical-blue/20 bg-[#EAF6FB] text-clinical-blueText dark:bg-clinical-blue/[0.14] dark:text-clinical-blue"
-                             : !item.enabled ? "border-transparent bg-white/45 text-clinical-muted/45" : "border-[#E2EEF3] bg-white/70 text-clinical-muted hover:bg-[#EEF8FC] hover:text-clinical-blueText dark:border-transparent dark:bg-white/[0.05] dark:hover:bg-white/[0.08] dark:hover:text-clinical-blue"
+                            ? "border-clinical-blueHover/50 bg-[linear-gradient(140deg,rgb(var(--clinical-blue))_0%,rgb(var(--clinical-blue-hover))_100%)] text-clinical-surface shadow-[inset_0_1px_0_rgba(255,255,255,0.25)]"
+                             : !item.enabled ? "border-transparent bg-white/45 text-clinical-muted/45" : "border-[#D3E7F0] bg-white/70 text-clinical-muted hover:bg-[#E3F2FA] hover:text-clinical-blueText dark:border-transparent dark:bg-white/[0.05] dark:hover:bg-white/[0.08] dark:hover:text-clinical-blue"
                         )}
                       >
                         <Icon className="size-5 shrink-0 stroke-[2.1]" />
@@ -224,14 +224,14 @@ export function Sidebar({ activeItem, onChange, mobileOpen = false, onMobileClos
                         className={cn(
                           "flex h-12 w-full items-center justify-center rounded-[16px] border p-2.5 transition focus:outline-none focus:ring-2 focus:ring-clinical-blue/25",
                           active
-                            ? "border-clinical-blue/20 bg-[#EAF6FB] text-clinical-blueText dark:bg-clinical-blue/[0.14] dark:text-clinical-blue"
-                            : "border-[#E2EEF3] bg-white/70 text-clinical-muted hover:bg-[#EEF8FC] hover:text-clinical-blueText dark:border-transparent dark:bg-white/[0.05] dark:hover:bg-white/[0.08] dark:hover:text-clinical-blue"
+                            ? "border-clinical-blueHover/50 bg-[linear-gradient(140deg,rgb(var(--clinical-blue))_0%,rgb(var(--clinical-blue-hover))_100%)] text-clinical-surface shadow-[inset_0_1px_0_rgba(255,255,255,0.25)]"
+                            : "border-[#D3E7F0] bg-white/70 text-clinical-muted hover:bg-[#E3F2FA] hover:text-clinical-blueText dark:border-transparent dark:bg-white/[0.05] dark:hover:bg-white/[0.08] dark:hover:text-clinical-blue"
                         )}
                       >
                         <Icon className="size-6 shrink-0 stroke-[2.15]" />
                       </button>
                       {renderedCollapsedGroup === group.id ? (
-                        <div ref={collapsedMenuRef} className="mt-1.5 h-0 overflow-hidden rounded-[18px] border border-[#D8EAF1] bg-white/70 p-1 opacity-0 shadow-[0_10px_26px_rgba(38,53,50,0.06)] dark:border-white/[0.08] dark:bg-white/[0.05]">
+                        <div ref={collapsedMenuRef} className="mt-1.5 h-0 overflow-hidden rounded-[18px] border border-[#CBE1EC] bg-white/70 p-1 opacity-0 shadow-[0_10px_26px_rgba(38,53,50,0.06)] dark:border-white/[0.08] dark:bg-white/[0.05]">
                           <div className="space-y-1.5">
                           {getCollapsedItems(group.items).map((item) => {
                             const ItemIcon = item.icon;
@@ -247,8 +247,8 @@ export function Sidebar({ activeItem, onChange, mobileOpen = false, onMobileClos
                                   className={cn(
                                     "flex h-11 w-full items-center justify-center rounded-[16px] border p-2 transition focus:outline-none focus:ring-2 focus:ring-clinical-blue/25",
                                     active
-                                      ? "border-clinical-blue/20 bg-[#EAF6FB] text-clinical-blueText dark:bg-clinical-blue/[0.14] dark:text-clinical-blue"
-                                       : !item.enabled ? "border-transparent text-clinical-muted/45" : "border-transparent text-clinical-muted hover:bg-[#F1F8FB] hover:text-clinical-blueText dark:hover:bg-white/[0.08] dark:hover:text-clinical-blue"
+                                      ? "border-clinical-blueHover/50 bg-[linear-gradient(140deg,rgb(var(--clinical-blue))_0%,rgb(var(--clinical-blue-hover))_100%)] text-clinical-surface shadow-[inset_0_1px_0_rgba(255,255,255,0.25)]"
+                                       : !item.enabled ? "border-transparent text-clinical-muted/45" : "border-transparent text-clinical-muted hover:bg-[#E8F4FB] hover:text-clinical-blueText dark:hover:bg-white/[0.08] dark:hover:text-clinical-blue"
                                   )}
                                 >
                                   <ItemIcon className="size-5 shrink-0 stroke-[2.1]" />
@@ -269,7 +269,7 @@ export function Sidebar({ activeItem, onChange, mobileOpen = false, onMobileClos
                   <div className="mb-1.5 px-3 text-[12px] font-extrabold uppercase tracking-[0.12em] text-clinical-muted/80">
                     Acesso rápido
                   </div>
-                  <div className="space-y-1 rounded-[18px] border border-[#E0EDF2] bg-white/58 p-1.5 dark:border-white/[0.06] dark:bg-white/[0.035]">
+                  <div className="space-y-1 rounded-[18px] border border-[#D2E6F0] bg-white/58 p-1.5 dark:border-white/[0.06] dark:bg-white/[0.035]">
                     {operationalGroup.items.map((item) => (
                       <SidebarItem key={item.id} item={item} activeItem={activeItem} onSelect={handleSelect} />
                     ))}
@@ -290,7 +290,7 @@ export function Sidebar({ activeItem, onChange, mobileOpen = false, onMobileClos
           </div>
 
           {!collapsed ? (
-            <div className="m-3 rounded-[24px] border border-[#D8EAF1] bg-white/72 p-4 shadow-[0_10px_28px_rgba(38,53,50,0.04)] dark:border-white/[0.08] dark:bg-white/[0.05]">
+            <div className="m-3 rounded-[24px] border border-[#CBE1EC] bg-white/72 p-4 shadow-[0_10px_28px_rgba(38,53,50,0.04)] dark:border-white/[0.08] dark:bg-white/[0.05]">
               <div className="mb-2 flex items-center gap-2 text-[13px] font-extrabold text-clinical-dark">
                 <UsersRound className="size-4 text-clinical-green" />
                 {clinic}
@@ -298,7 +298,7 @@ export function Sidebar({ activeItem, onChange, mobileOpen = false, onMobileClos
               <p className="text-[13px] leading-5 text-clinical-muted">IA operando 24/7 com handoff humano e regras clínicas monitoradas.</p>
             </div>
           ) : (
-            <div className="m-3 rounded-2xl border border-[#D8EAF1] bg-white/72 p-3 dark:border-white/[0.08] dark:bg-white/[0.05]">
+            <div className="m-3 rounded-2xl border border-[#CBE1EC] bg-white/72 p-3 dark:border-white/[0.08] dark:bg-white/[0.05]">
               <UsersRound className="mx-auto size-5 text-clinical-green" />
             </div>
           )}
@@ -327,9 +327,9 @@ export function Sidebar({ activeItem, onChange, mobileOpen = false, onMobileClos
             <div className="flex h-full flex-col">
               <div className="flex items-center justify-between gap-3 px-2 py-3">
                 <div className="flex items-center gap-3">
-                  <div className="relative flex size-11 shrink-0 items-center justify-center overflow-hidden rounded-2xl border border-[#DCECF2] bg-white dark:border-white/10 dark:bg-white/[0.05]">
+                  <div className="relative flex size-11 shrink-0 items-center justify-center overflow-hidden rounded-2xl border border-[#CDE3EE] bg-white dark:border-white/10 dark:bg-white/[0.05]">
                     <Image src={logo} alt="Ê-Bot Clinical" className="size-7 object-contain" />
-                    <span className="absolute -right-1 -top-1 size-3 rounded-full border-2 border-white bg-clinical-green dark:border-[#18211F]" />
+                    <span className="absolute -right-1 -top-1 size-3 rounded-full border-2 border-white bg-clinical-green dark:border-[#12202B]" />
                   </div>
                   <div>
                     <p className="text-base font-extrabold tracking-tight text-clinical-dark">Ê-Bot</p>
@@ -409,7 +409,7 @@ export function Sidebar({ activeItem, onChange, mobileOpen = false, onMobileClos
                     <div className="mb-1.5 px-3 text-[12px] font-extrabold uppercase tracking-[0.12em] text-clinical-muted/80">
                       Acesso rápido
                     </div>
-                    <div className="space-y-1 rounded-[18px] border border-[#E0EDF2] bg-clinical-surfaceMuted/50 p-1.5 dark:border-white/[0.06] dark:bg-white/[0.035]">
+                    <div className="space-y-1 rounded-[18px] border border-[#D2E6F0] bg-clinical-surfaceMuted/50 p-1.5 dark:border-white/[0.06] dark:bg-white/[0.035]">
                       {operationalGroup.items.map((item) => (
                         <SidebarItem key={item.id} item={item} activeItem={activeItem} onSelect={handleSelect} />
                       ))}

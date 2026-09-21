@@ -23,7 +23,7 @@ export function ViewSwitch({ views, value, onChange, className }: ViewSwitchProp
             onClick={() => onChange(view.id)}
             className={cn(
               "flex items-center gap-1.5 rounded-xl px-3 py-2 text-[13px] font-extrabold transition",
-              active ? "bg-clinical-surface text-clinical-blue shadow-sm" : "text-clinical-muted hover:text-clinical-dark"
+              active ? "border border-clinical-blueHover/60 bg-[linear-gradient(140deg,rgb(var(--clinical-blue))_0%,rgb(var(--clinical-blue-hover))_100%)] text-clinical-surface shadow-[inset_0_1px_0_rgba(255,255,255,0.25)]" : "border border-transparent text-clinical-muted hover:text-clinical-dark"
             )}
           >
             <Icon className="size-4" />

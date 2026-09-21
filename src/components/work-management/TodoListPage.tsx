@@ -370,9 +370,9 @@ export function TodoListPage() {
         <div className="flex flex-col gap-2 lg:flex-row lg:items-center">
           <SearchField value={search} onChange={setSearch} placeholder="Buscar tarefa, responsável, setor ou etiqueta" />
           <div className="flex shrink-0 items-center gap-1 rounded-2xl bg-clinical-surfaceMuted/55 p-1">
-            <button type="button" onClick={() => setView("board")} aria-label="Ver tarefas em quadro" aria-pressed={view === "board"} className={cn("flex size-9 items-center justify-center rounded-xl transition", view === "board" ? "bg-clinical-surface text-clinical-blue shadow-sm" : "text-clinical-muted hover:text-clinical-blue")}><Grid2X2 className="size-4" /></button>
-            <button type="button" onClick={() => setView("list")} aria-label="Ver tarefas em lista" aria-pressed={view === "list"} className={cn("flex size-9 items-center justify-center rounded-xl transition", view === "list" ? "bg-clinical-surface text-clinical-blue shadow-sm" : "text-clinical-muted hover:text-clinical-blue")}><List className="size-4" /></button>
-            <button type="button" onClick={() => setView("agenda")} aria-label="Ver tarefas em agenda" aria-pressed={view === "agenda"} className={cn("flex size-9 items-center justify-center rounded-xl transition", view === "agenda" ? "bg-clinical-surface text-clinical-blue shadow-sm" : "text-clinical-muted hover:text-clinical-blue")}><CalendarClock className="size-4" /></button>
+            <button type="button" onClick={() => setView("board")} aria-label="Ver tarefas em quadro" aria-pressed={view === "board"} className={cn("flex size-9 items-center justify-center rounded-xl border transition", view === "board" ? "border-clinical-blueHover/60 bg-[linear-gradient(140deg,rgb(var(--clinical-blue))_0%,rgb(var(--clinical-blue-hover))_100%)] text-clinical-surface shadow-[inset_0_1px_0_rgba(255,255,255,0.25)]" : "border-transparent text-clinical-muted hover:text-clinical-blue")}><Grid2X2 className="size-4" /></button>
+            <button type="button" onClick={() => setView("list")} aria-label="Ver tarefas em lista" aria-pressed={view === "list"} className={cn("flex size-9 items-center justify-center rounded-xl border transition", view === "list" ? "border-clinical-blueHover/60 bg-[linear-gradient(140deg,rgb(var(--clinical-blue))_0%,rgb(var(--clinical-blue-hover))_100%)] text-clinical-surface shadow-[inset_0_1px_0_rgba(255,255,255,0.25)]" : "border-transparent text-clinical-muted hover:text-clinical-blue")}><List className="size-4" /></button>
+            <button type="button" onClick={() => setView("agenda")} aria-label="Ver tarefas em agenda" aria-pressed={view === "agenda"} className={cn("flex size-9 items-center justify-center rounded-xl border transition", view === "agenda" ? "border-clinical-blueHover/60 bg-[linear-gradient(140deg,rgb(var(--clinical-blue))_0%,rgb(var(--clinical-blue-hover))_100%)] text-clinical-surface shadow-[inset_0_1px_0_rgba(255,255,255,0.25)]" : "border-transparent text-clinical-muted hover:text-clinical-blue")}><CalendarClock className="size-4" /></button>
           </div>
         </div>
         <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-5">
@@ -395,7 +395,7 @@ export function TodoListPage() {
           action={<Button size="sm" variant="secondary" onClick={tasks.length ? clearFilters : openCreate}>{tasks.length ? "Limpar filtros" : "Criar tarefa"}</Button>}
         />
       ) : view === "board" ? (
-        <div className="grid items-start gap-4 md:grid-cols-2 xl:grid-cols-4">
+        <div className="grid items-start gap-4 rounded-[28px] border border-clinical-border/[0.12] bg-clinical-surface/70 p-3 backdrop-blur-xl sm:p-4 md:grid-cols-2 xl:grid-cols-4">
           {columns.map((column) => {
             const ColumnIcon = column.icon;
             const columnTasks = filtered.filter((task) => column.ids.includes(task.status));

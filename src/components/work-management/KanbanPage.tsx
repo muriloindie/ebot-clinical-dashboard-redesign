@@ -234,7 +234,7 @@ export function KanbanPage() {
         onPointerUp={endPan}
         onPointerCancel={endPan}
         onPointerLeave={endPan}
-        className={cn("clinical-scrollbar min-w-0 max-w-full overflow-auto overscroll-contain pb-4", panning ? "cursor-grabbing select-none" : "cursor-grab")}
+        className={cn("clinical-scrollbar min-w-0 max-w-full overflow-auto overscroll-contain rounded-[28px] border border-clinical-border/[0.12] bg-clinical-surface/70 p-3 pb-4 backdrop-blur-xl", panning ? "cursor-grabbing select-none" : "cursor-grab")}
         tabIndex={0}
         aria-label="Quadro Kanban: arraste com o ponteiro para navegar na horizontal e na vertical"
       >

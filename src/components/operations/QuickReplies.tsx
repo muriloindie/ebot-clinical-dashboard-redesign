@@ -1,6 +1,6 @@
 "use client";
 
-import { Sparkles, Zap } from "lucide-react";
+import { Zap } from "lucide-react";
 import { cn } from "@/lib/cn";
 
 const defaultReplies = [
@@ -41,21 +41,5 @@ export function QuickReplies({
         ))}
       </div>
     </div>
-  );
-}
-
-export function AiSuggestion({ text, onApply }: { text: string; onApply: () => void }) {
-  return (
-    <button
-      type="button"
-      onClick={onApply}
-      className="group flex w-full items-start gap-2.5 rounded-xl border border-clinical-blue/15 bg-clinical-blue/[0.06] px-3 py-2.5 text-left transition hover:border-clinical-blue/30 hover:bg-clinical-blue/[0.10]"
-    >
-      <Sparkles className="mt-0.5 size-4 shrink-0 text-clinical-blue" />
-      <span className="min-w-0">
-        <span className="block text-[11px] font-extrabold uppercase tracking-[0.10em] text-clinical-blueText">Sugestão da IA</span>
-        <span className="mt-0.5 block text-[13px] font-semibold leading-5 text-clinical-slate group-hover:text-clinical-dark">{text}</span>
-      </span>
-    </button>
   );
 }

@@ -379,7 +379,7 @@ function PatientProfile({ patient, onEdit, onSaveNotes, onNewAttendance }: { pat
 
       <div role="tablist" aria-label="Seções do perfil" className="mt-5 flex gap-1 overflow-x-auto rounded-2xl border border-clinical-border/[0.12] bg-clinical-surfaceMuted/55 p-1">
         {tabs.map(({ id, icon: Icon }) => (
-          <button key={id} type="button" role="tab" aria-selected={activeTab === id} aria-controls={`patient-tab-${id}`} onClick={() => setActiveTab(id)} className={cn("flex shrink-0 items-center gap-1.5 rounded-xl px-3 py-2 text-[12px] font-extrabold transition", activeTab === id ? "bg-clinical-surface text-clinical-blue shadow-sm" : "text-clinical-muted hover:text-clinical-dark")}>
+          <button key={id} type="button" role="tab" aria-selected={activeTab === id} aria-controls={`patient-tab-${id}`} onClick={() => setActiveTab(id)} className={cn("flex shrink-0 items-center gap-1.5 rounded-xl px-3 py-2 text-[12px] font-extrabold transition", activeTab === id ? "border border-clinical-blueHover/60 bg-[linear-gradient(140deg,rgb(var(--clinical-blue))_0%,rgb(var(--clinical-blue-hover))_100%)] text-clinical-surface shadow-[inset_0_1px_0_rgba(255,255,255,0.25)]" : "border border-transparent text-clinical-muted hover:text-clinical-dark")}>
             <Icon className="size-3.5" />{id}
           </button>
         ))}

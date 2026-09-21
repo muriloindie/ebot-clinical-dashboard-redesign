@@ -420,7 +420,7 @@ export function AgendaGooglePage() {
               {([{ id: "dia", label: "Dia", icon: Clock3 }, { id: "semana", label: "Semana", icon: CalendarRange }, { id: "mes", label: "Mês", icon: CalendarDays }] as { id: CalendarView; label: string; icon: typeof Clock3 }[]).map((item) => {
                 const Icon = item.icon;
                 return (
-                  <button key={item.id} type="button" role="tab" aria-selected={view === item.id} onClick={() => setView(item.id)} className={cn("flex items-center gap-1.5 rounded-xl px-3 py-2 text-[12px] font-extrabold transition", view === item.id ? "bg-clinical-surface text-clinical-blue shadow-sm" : "text-clinical-muted hover:text-clinical-blue")}>
+                  <button key={item.id} type="button" role="tab" aria-selected={view === item.id} onClick={() => setView(item.id)} className={cn("flex items-center gap-1.5 rounded-xl px-3 py-2 text-[12px] font-extrabold transition", view === item.id ? "border border-clinical-blueHover/60 bg-[linear-gradient(140deg,rgb(var(--clinical-blue))_0%,rgb(var(--clinical-blue-hover))_100%)] text-clinical-surface shadow-[inset_0_1px_0_rgba(255,255,255,0.25)]" : "border border-transparent text-clinical-muted hover:text-clinical-blue")}>
                     <Icon className="size-3.5" />{item.label}
                   </button>
                 );

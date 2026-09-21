@@ -55,7 +55,7 @@ export function SegmentedTabs({ tabs, value, onChange }: { tabs: { id: string; l
   return (
     <div role="tablist" aria-label="Filtros da lista" className="flex min-w-0 gap-1 overflow-x-auto rounded-2xl border border-clinical-border/[0.12] bg-clinical-surfaceMuted/55 p-1">
       {tabs.map((tab) => (
-        <button key={tab.id} type="button" role="tab" aria-selected={value === tab.id} onClick={() => onChange(tab.id)} className={cn("shrink-0 rounded-xl px-3 py-2 text-[13px] font-extrabold transition", value === tab.id ? "bg-clinical-surface text-clinical-blue shadow-sm" : "text-clinical-muted hover:text-clinical-dark")}>
+        <button key={tab.id} type="button" role="tab" aria-selected={value === tab.id} onClick={() => onChange(tab.id)} className={cn("shrink-0 rounded-xl px-3 py-2 text-[13px] font-extrabold transition", value === tab.id ? "border border-clinical-blueHover/60 bg-[linear-gradient(140deg,rgb(var(--clinical-blue))_0%,rgb(var(--clinical-blue-hover))_100%)] text-clinical-surface shadow-[inset_0_1px_0_rgba(255,255,255,0.25)]" : "border border-transparent text-clinical-muted hover:text-clinical-dark")}>
           {tab.label}{tab.count !== undefined ? <span className="ml-1.5 tabular-nums opacity-70">{tab.count}</span> : null}
         </button>
       ))}

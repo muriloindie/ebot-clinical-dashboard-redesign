@@ -34,8 +34,8 @@ const statusStyles = {
   offline: "bg-clinical-muted/45"
 };
 
-export function getInitials(name: string) {
-  return name
+export function getInitials(name?: string) {
+  return (name ?? "")
     .split(" ")
     .map((part) => part[0])
     .filter(Boolean)
