@@ -21,7 +21,10 @@ function getInitialTheme(): Theme {
 }
 
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
-  const [theme, setTheme] = useState<Theme>(() => getInitialTheme());
+  // Inicializa como "light" (igual ao SSR) e sincroniza com o tema salvo
+  // no primeiro efeito — evita mismatch de hidratação quando o tema
+  // armazenado é "dark" (o servidor sempre renderiza "light").
+  const [theme, setTheme] = useState<Theme>("light");
 
   useEffect(() => {
     setTheme(getInitialTheme());

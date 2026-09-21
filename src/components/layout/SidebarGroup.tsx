@@ -25,11 +25,11 @@ export function SidebarGroup({ group, open, activeItem, onToggle, onSelect }: Si
         className={cn(
           "group flex w-full items-center gap-2.5 rounded-[18px] border px-3 py-2.5 text-left transition duration-200 ease-out focus:outline-none focus:ring-2 focus:ring-clinical-blue/25",
           hasActiveItem
-            ? "border-clinical-blue/[0.20] bg-[#EAF6FB] text-clinical-blueText shadow-[0_8px_22px_rgba(58,157,202,0.08)] dark:bg-clinical-blue/[0.10]"
+            ? "border-clinical-blueHover/50 bg-[linear-gradient(140deg,rgb(var(--clinical-blue))_0%,rgb(var(--clinical-blue-hover))_100%)] text-clinical-surface shadow-[inset_0_1px_0_rgba(255,255,255,0.25)]"
             : "border-transparent text-clinical-dark hover:bg-white/82 dark:hover:bg-white/[0.06]"
         )}
       >
-        <span className={cn("flex size-8 shrink-0 items-center justify-center rounded-2xl transition", hasActiveItem ? "bg-clinical-blue/[0.13] text-clinical-blue" : "bg-white text-clinical-muted shadow-[inset_0_0_0_1px_rgba(58,157,202,0.10)] group-hover:text-clinical-blueText dark:bg-white/[0.06] dark:shadow-none dark:group-hover:text-clinical-blue")}>
+        <span className={cn("flex size-8 shrink-0 items-center justify-center rounded-2xl transition", hasActiveItem ? "bg-clinical-surface/20 text-clinical-surface" : "bg-white text-clinical-muted shadow-[inset_0_0_0_1px_rgba(58,157,202,0.10)] group-hover:text-clinical-blueText dark:bg-white/[0.06] dark:shadow-none dark:group-hover:text-clinical-blue")}>
           <Icon className="size-4" />
         </span>
         <span className="min-w-0 flex-1">
@@ -40,7 +40,7 @@ export function SidebarGroup({ group, open, activeItem, onToggle, onSelect }: Si
             {group.badge}
           </span>
         ) : null}
-        <ChevronRight className={cn("size-4 shrink-0 text-clinical-muted transition duration-200", open && "rotate-90 text-clinical-blue")} />
+        <ChevronRight className={cn("size-4 shrink-0 transition duration-200", open && "rotate-90", hasActiveItem ? "text-clinical-surface" : open ? "text-clinical-blue" : "text-clinical-muted")} />
       </button>
 
       <div
@@ -50,7 +50,7 @@ export function SidebarGroup({ group, open, activeItem, onToggle, onSelect }: Si
         )}
       >
         <div className="overflow-hidden">
-          <div className="mt-1.5 space-y-1 rounded-[18px] border border-[#E0EDF2] bg-white/58 p-1.5 dark:border-white/[0.06] dark:bg-white/[0.035]">
+          <div className="mt-1.5 space-y-1 rounded-[18px] border border-[#D2E6F0] bg-white/58 p-1.5 dark:border-white/[0.06] dark:bg-white/[0.035]">
             {group.items.map((item) => (
               <SidebarItem key={item.id} item={item} activeItem={activeItem} onSelect={onSelect} />
             ))}

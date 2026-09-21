@@ -7,7 +7,7 @@ const priorities = {
 } as const;
 
 export function PriorityBadge({ priority, withChip = false }: { priority: "Alta" | "Média" | "Baixa"; withChip?: boolean }) {
-  const config = priorities[priority];
+  const config = priorities[priority] ?? priorities.Média;
   if (withChip) {
     return (
       <span className={cn("inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] font-extrabold", config.chip, config.label)}>

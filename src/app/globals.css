@@ -3,10 +3,10 @@
 @tailwind utilities;
 
 :root {
-  --clinical-blue: 58 157 202;
-  --clinical-blue-hover: 45 131 170;
-  --clinical-blue-text: 37 107 143;
-  --clinical-blue-soft: 223 242 250;
+  --clinical-blue: 26 139 199;
+  --clinical-blue-hover: 16 116 172;
+  --clinical-blue-text: 15 103 155;
+  --clinical-blue-soft: 188 226 243;
   --clinical-green: 135 166 48;
   --clinical-teal: 48 163 164;
   --clinical-orange: 241 157 24;
@@ -14,25 +14,25 @@
   --clinical-whatsapp: 37 211 102;
   --clinical-dark: 38 53 50;
   --clinical-header: 47 56 53;
-  --clinical-charcoal: 17 23 22;
-  --clinical-slate: 72 86 83;
-  --clinical-muted: 82 98 95;
-  --clinical-snow: 246 250 252;
-  --clinical-soft: 241 247 250;
+  --clinical-charcoal: 15 21 26;
+  --clinical-slate: 70 85 88;
+  --clinical-muted: 79 96 98;
+  --clinical-snow: 210 229 245;
+  --clinical-soft: 205 226 243;
   --clinical-surface: 255 255 255;
-  --clinical-surface-muted: 239 247 250;
-  --clinical-border: 58 157 202;
-  --shadow-clinical: 0 18px 54px rgba(30, 62, 72, 0.08);
-  --shadow-card: 0 16px 42px rgba(58, 157, 202, 0.09);
-  --shadow-glow: 0 0 34px rgba(58, 157, 202, 0.18);
+  --clinical-surface-muted: 214 231 244;
+  --clinical-border: 26 139 199;
+  --shadow-clinical: 0 18px 54px rgba(30, 62, 72, 0.12);
+  --shadow-card: 0 16px 42px rgba(26, 139, 199, 0.16);
+  --shadow-glow: 0 0 34px rgba(26, 139, 199, 0.30);
   --font-bebas: "Bungee", "Impact", "Arial Black", sans-serif;
 }
 
 :root[data-theme="dark"] {
-  --clinical-blue: 58 157 202;
-  --clinical-blue-hover: 74 177 219;
+  --clinical-blue: 36 152 210;
+  --clinical-blue-hover: 70 175 222;
   --clinical-blue-text: 132 207 237;
-  --clinical-blue-soft: 32 58 67;
+  --clinical-blue-soft: 27 51 63;
   --clinical-green: 158 188 71;
   --clinical-teal: 69 190 190;
   --clinical-orange: 247 177 64;
@@ -40,17 +40,17 @@
   --clinical-whatsapp: 58 220 120;
   --clinical-dark: 246 250 252;
   --clinical-header: 246 250 252;
-  --clinical-charcoal: 17 23 22;
-  --clinical-slate: 205 218 215;
-  --clinical-muted: 174 190 187;
-  --clinical-snow: 17 23 22;
-  --clinical-soft: 26 37 34;
-  --clinical-surface: 26 37 34;
-  --clinical-surface-muted: 38 53 50;
+  --clinical-charcoal: 12 17 22;
+  --clinical-slate: 204 216 222;
+  --clinical-muted: 172 188 197;
+  --clinical-snow: 10 18 27;
+  --clinical-soft: 30 45 55;
+  --clinical-surface: 25 38 48;
+  --clinical-surface-muted: 34 50 61;
   --clinical-border: 255 255 255;
-  --shadow-clinical: 0 24px 70px rgba(0, 0, 0, 0.32);
-  --shadow-card: 0 18px 52px rgba(0, 0, 0, 0.24);
-  --shadow-glow: 0 0 34px rgba(58, 157, 202, 0.18);
+  --shadow-clinical: 0 24px 70px rgba(0, 0, 0, 0.38);
+  --shadow-card: 0 18px 52px rgba(0, 0, 0, 0.30);
+  --shadow-glow: 0 0 34px rgba(58, 157, 202, 0.20);
 }
 
 * {
@@ -102,26 +102,52 @@ textarea:focus-visible {
 
 .clinical-canvas {
   background:
-    radial-gradient(circle at 16% 12%, rgb(var(--clinical-blue) / 0.08), transparent 30rem),
-    radial-gradient(circle at 88% 6%, rgb(var(--clinical-green) / 0.06), transparent 26rem),
-    radial-gradient(circle at 78% 78%, rgb(var(--clinical-teal) / 0.06), transparent 30rem),
-    linear-gradient(180deg, rgb(var(--clinical-snow)) 0%, rgb(var(--clinical-surface-muted) / 0.72) 100%);
+    radial-gradient(44rem 36rem at 6% -2%, rgb(var(--clinical-blue) / 0.42), transparent 58%),
+    radial-gradient(40rem 32rem at 100% 0%, rgb(var(--clinical-teal) / 0.30), transparent 56%),
+    radial-gradient(46rem 40rem at 88% 102%, rgb(var(--clinical-green) / 0.26), transparent 60%),
+    radial-gradient(40rem 34rem at -2% 100%, rgb(var(--clinical-blue) / 0.32), transparent 58%),
+    linear-gradient(165deg, #dbeaf8 0%, #bdd8ee 48%, #a6c8e5 100%);
   transition: background 260ms ease;
 }
 
+:root[data-theme="dark"] .clinical-canvas {
+  background:
+    radial-gradient(52rem 42rem at 6% -2%, rgb(var(--clinical-blue) / 0.45), transparent 60%),
+    radial-gradient(46rem 38rem at 100% 0%, rgb(var(--clinical-teal) / 0.30), transparent 58%),
+    radial-gradient(50rem 44rem at 84% 102%, rgb(var(--clinical-green) / 0.22), transparent 64%),
+    radial-gradient(44rem 38rem at -2% 98%, rgb(var(--clinical-blue) / 0.32), transparent 60%),
+    linear-gradient(165deg, #101f2c 0%, #0b1620 48%, #070d14 100%);
+}
+
 .glass-panel {
-  background: rgb(var(--clinical-surface) / 0.78);
-  border: 1px solid rgb(var(--clinical-border) / 0.12);
+  background:
+    radial-gradient(120% 120% at 0% 0%, rgb(var(--clinical-blue) / 0.07), transparent 48%),
+    linear-gradient(180deg, rgb(var(--clinical-surface) / 0.95), rgb(var(--clinical-surface) / 0.88));
+  border: 1px solid rgb(var(--clinical-border) / 0.22);
   box-shadow: var(--shadow-clinical);
   backdrop-filter: blur(18px);
 }
 
 .glass-card {
-  background: linear-gradient(180deg, rgb(var(--clinical-surface) / 0.92), rgb(var(--clinical-surface) / 0.78));
-  border: 1px solid rgb(var(--clinical-border) / 0.12);
+  background:
+    radial-gradient(130% 120% at 0% 0%, rgb(var(--clinical-blue) / 0.08), transparent 50%),
+    linear-gradient(180deg, rgb(var(--clinical-surface) / 0.98), rgb(var(--clinical-surface) / 0.92));
+  border: 1px solid rgb(var(--clinical-border) / 0.22);
   box-shadow: var(--shadow-card);
   backdrop-filter: blur(18px);
   transition: background 240ms ease, border-color 240ms ease, box-shadow 240ms ease, transform 240ms ease;
+}
+
+:root[data-theme="dark"] .glass-panel {
+  background:
+    radial-gradient(130% 120% at 0% 0%, rgb(var(--clinical-blue) / 0.16), transparent 52%),
+    linear-gradient(180deg, rgb(var(--clinical-surface) / 0.96), rgb(16 27 37 / 0.92));
+}
+
+:root[data-theme="dark"] .glass-card {
+  background:
+    radial-gradient(130% 120% at 0% 0%, rgb(var(--clinical-blue) / 0.18), transparent 52%),
+    linear-gradient(180deg, rgb(var(--clinical-surface) / 0.97), rgb(16 27 37 / 0.93));
 }
 
 .clinical-scrollbar::-webkit-scrollbar {
@@ -138,9 +164,39 @@ textarea:focus-visible {
   background: transparent;
 }
 
-.chat-dots {
-  background-image: radial-gradient(circle, rgb(var(--clinical-charcoal) / 0.045) 1px, transparent 1px);
-  background-size: 18px 18px;
+.chat-pattern {
+  background-color: rgb(var(--clinical-snow) / 0.55);
+  background-image: url("/chat-doodle-light.svg");
+  background-repeat: repeat;
+}
+
+:root[data-theme="dark"] .chat-pattern {
+  background-color: rgb(var(--clinical-snow) / 0.35);
+  background-image: url("/chat-doodle-dark.svg");
+}
+
+.chat-bubble {
+  backdrop-filter: blur(10px) saturate(1.15);
+  -webkit-backdrop-filter: blur(10px) saturate(1.15);
+  box-shadow: 0 2px 10px rgb(var(--clinical-charcoal) / 0.08);
+}
+
+:root[data-theme="dark"] .chat-bubble {
+  box-shadow: 0 2px 12px rgb(0 0 0 / 0.35);
+}
+
+:root[data-theme="dark"] .chat-bubble:not(.chat-bubble-mine):not(.chat-bubble-ai):not(.chat-bubble-human) {
+  background-color: rgb(var(--clinical-surface) / 0.72);
+  border-color: rgb(var(--clinical-border) / 0.12);
+}
+
+@keyframes led-marquee {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(calc(-1 * var(--marquee-shift, 0px)));
+  }
 }
 
 .qr-editor:empty::before {

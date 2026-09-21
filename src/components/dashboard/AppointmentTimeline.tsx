@@ -45,7 +45,7 @@ export function AppointmentTimeline() {
             onClick={() => setActiveDate(date)}
             className={cn(
               "shrink-0 rounded-2xl border px-4 py-2.5 text-[14px] font-extrabold transition focus:outline-none focus:ring-2 focus:ring-clinical-blue/25",
-              activeDate === date ? "border-clinical-blue/20 bg-clinical-blue text-white shadow-glow" : "border-clinical-border/[0.10] bg-clinical-surface/[0.65] text-clinical-muted hover:text-clinical-blue"
+              activeDate === date ? "border-clinical-blueHover/60 bg-[linear-gradient(140deg,rgb(var(--clinical-blue))_0%,rgb(var(--clinical-blue-hover))_100%)] text-clinical-surface shadow-[inset_0_1px_0_rgba(255,255,255,0.25)]" : "border-clinical-border/[0.10] bg-clinical-surface/[0.65] text-clinical-muted hover:text-clinical-blue"
             )}
           >
             {date}

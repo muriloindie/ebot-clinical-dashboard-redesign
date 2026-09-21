@@ -10,8 +10,8 @@ type MetricCardProps = {
 };
 
 const metricVisual = {
-  accent: "#3A9DCA",
-  iconBg: "rgba(58,157,202,0.11)"
+  accent: "#1A8BC7",
+  iconBg: "rgba(26,139,199,0.13)"
 };
 
 export function MetricCard({ metric, icon: Icon }: MetricCardProps) {

@@ -10,7 +10,7 @@ import { cn } from "@/lib/cn";
 type SeriesKey = "total" | "ai" | "human";
 
 const toggles: { key: SeriesKey; label: string; icon: React.ElementType; color: string }[] = [
-  { key: "total", label: "Total", icon: Activity, color: "#3A9DCA" },
+  { key: "total", label: "Total", icon: Activity, color: "#1A8BC7" },
   { key: "ai", label: "Resolvidos por IA", icon: Bot, color: "#30A3A4" },
   { key: "human", label: "Transferidos", icon: UsersRound, color: "#87A630" }
 ];
@@ -64,7 +64,7 @@ export function WaveLineChart({ scale = 1 }: { scale?: number }) {
                 onClick={() => toggleSeries(toggle.key)}
                 className={cn(
                   "flex shrink-0 items-center gap-1.5 rounded-full px-3 py-1.5 text-[12px] font-extrabold transition duration-200 focus:outline-none focus:ring-2 focus:ring-clinical-blue/25",
-                  active ? "bg-clinical-surface text-clinical-blueText shadow-[0_6px_16px_rgba(38,53,50,0.06)]" : "text-clinical-muted hover:bg-clinical-surface/70 hover:text-clinical-slate"
+                  active ? "bg-clinical-blueSoft/80 text-clinical-blueText ring-1 ring-inset ring-clinical-blue/30" : "text-clinical-muted hover:bg-clinical-surface/70 hover:text-clinical-slate"
                 )}
               >
                 <Icon className="size-3.5" style={{ color: active ? toggle.color : undefined }} /> {toggle.label}
@@ -79,12 +79,12 @@ export function WaveLineChart({ scale = 1 }: { scale?: number }) {
           <AreaChart data={chartData} margin={{ top: 18, right: 8, left: -28, bottom: 8 }}>
             <defs>
               <linearGradient id="totalStroke" x1="0" x2="1" y1="0" y2="0">
-                <stop offset="0%" stopColor="#3A9DCA" />
+                <stop offset="0%" stopColor="#1A8BC7" />
                 <stop offset="100%" stopColor="#30A3A4" />
               </linearGradient>
               <linearGradient id="totalFill" x1="0" x2="0" y1="0" y2="1">
-                <stop offset="0%" stopColor="#3A9DCA" stopOpacity={0.18} />
-                <stop offset="100%" stopColor="#3A9DCA" stopOpacity={0.02} />
+                <stop offset="0%" stopColor="#1A8BC7" stopOpacity={0.18} />
+                <stop offset="100%" stopColor="#1A8BC7" stopOpacity={0.02} />
               </linearGradient>
             </defs>
             <CartesianGrid stroke="rgba(58,157,202,0.09)" strokeDasharray="4 10" vertical={false} />
@@ -100,7 +100,7 @@ export function WaveLineChart({ scale = 1 }: { scale?: number }) {
                 strokeWidth={3}
                 fill="url(#totalFill)"
                 dot={false}
-                activeDot={{ r: 5, strokeWidth: 3, stroke: "#fff", fill: "#3A9DCA" }}
+                activeDot={{ r: 5, strokeWidth: 3, stroke: "#fff", fill: "#1A8BC7" }}
                 animationDuration={1200}
               />
             ) : null}

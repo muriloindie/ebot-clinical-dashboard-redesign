@@ -52,7 +52,7 @@ import { PriorityBadge } from "@/components/ui/PriorityBadge";
 import { Timeline } from "@/components/ui/Timeline";
 import { PageHeader, StatePanel } from "@/components/ui/Week1Primitives";
 import { ChatComposer, type ComposerMessage } from "@/components/operations/ChatComposer";
-import { AiSuggestion, QuickReplies } from "@/components/operations/QuickReplies";
+import { QuickReplies } from "@/components/operations/QuickReplies";
 import { cn } from "@/lib/cn";
 
 type StoredMessage = ComposerMessage & { id: string; from: AttendanceMessage["from"]; time: string };
@@ -81,6 +81,21 @@ function getInitialMessages(source: StoredAttendance[] = attendances) {
 
 function attendanceDateOffset(attendance: StoredAttendance) {
   return typeof attendance.dateOffset === "number" ? attendance.dateOffset : 0;
+}
+
+function sanitizeRows(source: StoredAttendance[]): StoredAttendance[] {
+  if (!Array.isArray(source)) return attendances;
+  return source.map((row) => {
+    if (!row || typeof row !== "object") return row;
+    const fallback = attendances.find((item) => item.id === row.id);
+    const patientName = typeof row.patientName === "string" && row.patientName.trim() ? row.patientName : fallback?.patientName ?? "Paciente sem nome";
+    const messages = Array.isArray(row.messages) ? row.messages : fallback?.messages ?? [];
+    const priority = row.priority ?? fallback?.priority ?? "Média";
+    const status = row.status && statusTone[row.status as AttendanceStatus] ? row.status : fallback?.status ?? "Aguardando";
+    const channel = typeof row.channel === "string" ? row.channel : fallback?.channel ?? "WhatsApp";
+    const unread = typeof row.unread === "number" && Number.isFinite(row.unread) ? row.unread : 0;
+    return { ...row, patientName, messages, priority, status, channel, unread };
+  });
 }
 
 function messagePreview(message: ComposerMessage) {
@@ -125,7 +140,7 @@ export function AttendancesPage() {
   ], { stagger: 0.05, delay: 0.05 });
 
   useEffect(() => {
-    const cachedRows = readLocalCache<StoredAttendance[]>(CACHE_ROWS, attendances);
+    const cachedRows = sanitizeRows(readLocalCache<StoredAttendance[]>(CACHE_ROWS, attendances));
     const seededMessages = getInitialMessages(cachedRows);
     const cachedMessages = readLocalCache<Record<string, StoredMessage[]>>(CACHE_MESSAGES, {});
     const nextMessages = Object.fromEntries(
@@ -668,10 +683,7 @@ function ChatPane({
     if (last && (last.from === "ai" || last.from === "human")) setTyping(false);
   }, [messages]);
 
-  const lastPatient = [...messages].reverse().find((message) => message.from === "patient");
-  const lastReply = messages[messages.length - 1];
   const closed = attendance.status === "Encerrado";
-  const showSuggestion = !closed && Boolean(lastPatient && lastReply && lastReply.from !== "patient");
   const online = attendance.status === "Em atendimento humano" || attendance.status === "Resolvido pela IA";
 
   function handleSend(message: ComposerMessage) {
@@ -735,18 +747,12 @@ function ChatPane({
         </span>
       </div>
 
-      <div ref={scrollRef} className="chat-dots clinical-scrollbar min-h-0 flex-1 space-y-3 overflow-y-auto p-4 max-h-[calc(100dvh-250px)] md:max-h-none">
-        <div className="flex justify-center"><span className="rounded-full bg-clinical-surfaceMuted/80 px-3 py-1 text-[10px] font-extrabold uppercase tracking-wider text-clinical-muted">Hoje</span></div>
+      <div ref={scrollRef} className="chat-pattern clinical-scrollbar min-h-0 flex-1 space-y-3 overflow-y-auto p-4 max-h-[calc(100dvh-250px)] md:max-h-none">
+        <div className="flex justify-center"><span className="rounded-full border border-white/40 bg-white/60 px-3 py-1 text-[10px] font-extrabold uppercase tracking-wider text-clinical-muted backdrop-blur-md">Hoje</span></div>
         {messages.map((message) => (
           <AttendanceBubble key={message.id} message={message} />
         ))}
         {typing ? <TypingBubble /> : null}
-        {showSuggestion ? (
-          <AiSuggestion
-            text="Confirmado! Qualquer dúvida, estou por aqui."
-            onApply={() => handleSend({ kind: "text", text: "Confirmado! Qualquer dúvida, estou por aqui." })}
-          />
-        ) : null}
       </div>
 
        <div className="relative border-t border-clinical-border/[0.12]">
@@ -758,18 +764,18 @@ function ChatPane({
          ) : (
            <>
              <QuickReplies open={quickOpen} onPick={(text) => { handleSend({ kind: "text", text }); setQuickOpen(false); }} />
-             <div className="flex items-center gap-2 px-3 pt-2.5">
-               <button
-                 type="button"
-                 aria-label="Respostas rápidas"
-                 aria-expanded={quickOpen}
-                 onClick={() => setQuickOpen((current) => !current)}
-                 className={cn("flex size-10 shrink-0 items-center justify-center rounded-xl border transition", quickOpen ? "border-clinical-orange/30 bg-clinical-orange/10 text-clinical-orange" : "border-clinical-border/[0.12] text-clinical-muted hover:border-clinical-blue/25 hover:text-clinical-blue")}
-               >
-                 <MessageSquareText className="size-4" />
-               </button>
-               <ChatComposer onSend={handleSend} />
-             </div>
+              <div className="flex items-center gap-2 px-3 pt-2.5">
+                <button
+                  type="button"
+                  aria-label="Respostas rápidas"
+                  aria-expanded={quickOpen}
+                  onClick={() => setQuickOpen((current) => !current)}
+                  className={cn("flex size-10 shrink-0 items-center justify-center rounded-xl border transition", quickOpen ? "border-clinical-orange/30 bg-clinical-orange/10 text-clinical-orange" : "border-clinical-border/[0.12] text-clinical-muted hover:border-clinical-blue/25 hover:text-clinical-blue")}
+                >
+                  <MessageSquareText className="size-4" />
+                </button>
+                <ChatComposer onSend={handleSend} />
+              </div>
            </>
          )}
        </div>
@@ -785,21 +791,21 @@ function AttendanceBubble({ message }: { message: StoredMessage }) {
     <div className={cn("flex flex-col", mine ? "items-end" : "items-start")}>
       <div
         className={cn(
-          "relative max-w-[85%] rounded-[14px] px-3.5 py-2.5 text-sm leading-6 shadow-[0_1px_1px_rgba(38,53,50,0.06)]",
+          "chat-bubble relative max-w-[85%] rounded-[14px] px-3.5 py-2.5 text-sm leading-6",
           mine
-            ? "rounded-tr-[4px] bg-clinical-whatsapp/15 text-clinical-dark"
+            ? "chat-bubble-mine rounded-tr-[4px] bg-clinical-whatsapp/15 text-clinical-dark"
             : isAi
-              ? "rounded-tl-[4px] border border-clinical-blue/20 bg-clinical-blue/[0.07] text-clinical-slate"
+              ? "chat-bubble-ai rounded-tl-[4px] border border-clinical-blue/20 bg-clinical-blue/[0.07] text-clinical-slate"
               : isHuman
-                ? "rounded-tl-[4px] border border-clinical-teal/20 bg-clinical-teal/[0.08] text-clinical-slate"
-                : "rounded-tl-[4px] border border-clinical-border/[0.10] bg-clinical-surface text-clinical-slate"
+                ? "chat-bubble-human rounded-tl-[4px] border border-clinical-teal/20 bg-clinical-teal/[0.08] text-clinical-slate"
+                : "rounded-tl-[4px] border border-white/40 bg-white/60 text-clinical-slate"
         )}
       >
         {mine ? (
           <span aria-hidden="true" className="absolute -bottom-px -right-[6px] size-0 border-b-[10px] border-l-[10px] border-b-clinical-whatsapp/15 border-l-transparent" />
         ) : null}
         {!mine && !isAi && !isHuman ? (
-          <span aria-hidden="true" className="absolute -bottom-px -left-[6px] size-0 border-b-[10px] border-r-[10px] border-b-clinical-surface border-r-transparent" />
+          <span aria-hidden="true" className="absolute -bottom-px -left-[6px] size-0 border-b-[10px] border-r-[10px] border-b-white/60 border-r-transparent" />
         ) : null}
         {(isAi || isHuman) ? (
           <p className="mb-1 flex items-center gap-1.5 text-[10px] font-black uppercase tracking-[0.12em]">
@@ -819,7 +825,7 @@ function AttendanceBubble({ message }: { message: StoredMessage }) {
 function TypingBubble() {
   return (
     <div className="flex items-end">
-      <div className="relative rounded-[14px] rounded-tl-[4px] border border-clinical-border/[0.10] bg-clinical-surface px-4 py-3.5 shadow-[0_1px_1px_rgba(38,53,50,0.06)]">
+      <div className="chat-bubble relative rounded-[14px] rounded-tl-[4px] border border-white/40 bg-white/60 px-4 py-3.5">
         <span className="flex items-center gap-1" role="status" aria-label="A IA está digitando">
           <span className="size-1.5 animate-bounce rounded-full bg-clinical-muted" style={{ animationDelay: "0ms" }} />
           <span className="size-1.5 animate-bounce rounded-full bg-clinical-muted" style={{ animationDelay: "120ms" }} />
