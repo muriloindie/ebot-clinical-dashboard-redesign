@@ -736,11 +736,11 @@ function QueueGroupNavigation({
   return (
     <nav
       aria-label="Grupos de atendimento"
-      className="relative isolate grid grid-cols-3 rounded-[18px] border border-clinical-border/[0.16] bg-clinical-surface p-1 shadow-[0_7px_0_rgba(16,31,43,0.035),0_12px_22px_rgba(16,31,43,0.12),inset_0_1px_0_rgba(255,255,255,0.38)]"
+      className="relative isolate grid grid-cols-3 rounded-[18px] border border-clinical-border/[0.16] bg-[rgb(var(--clinical-queue-bg))] p-1 shadow-[0_7px_0_rgba(16,31,43,0.035),0_12px_22px_rgba(16,31,43,0.12),inset_0_1px_0_rgba(255,255,255,0.38)]"
     >
       <span
         aria-hidden="true"
-        className="pointer-events-none absolute bottom-1 left-1 top-1 z-0 w-[calc((100%_-_0.5rem)_/_3)] rounded-[13px] border border-clinical-border/[0.10] bg-clinical-surfaceMuted shadow-[0_4px_8px_rgba(16,31,43,0.08),inset_0_1px_0_rgba(255,255,255,0.38)] transition-transform duration-[240ms] ease-[cubic-bezier(0.2,0,0,1)] motion-reduce:transition-none"
+        className="pointer-events-none absolute bottom-1 left-1 top-1 z-0 w-[calc((100%_-_0.5rem)_/_3)] rounded-[13px] border border-clinical-border/[0.10] bg-[rgb(var(--clinical-queue-selected))] shadow-[0_4px_8px_rgba(16,31,43,0.08),inset_0_1px_0_rgba(255,255,255,0.38)] transition-transform duration-[240ms] ease-[cubic-bezier(0.2,0,0,1)] motion-reduce:transition-none"
         style={{ transform: `translateX(${activeIndex * 100}%)` }}
       />
       {queueGroupDefinitions.map((item) => {
@@ -762,7 +762,7 @@ function QueueGroupNavigation({
           >
             <Icon className={cn("size-3.5 transition-transform duration-200 ease-out motion-reduce:transition-none", item.tone, active && "scale-110")} aria-hidden="true" />
             <span className="max-w-full truncate">{item.id}</span>
-            <span className={cn("absolute right-1 top-1 flex h-[17px] min-w-[17px] items-center justify-center rounded-full px-1 text-[9px] font-black leading-none tabular-nums transition-colors duration-200", active ? item.badge : "bg-clinical-surfaceMuted text-clinical-muted")}>
+            <span className={cn("absolute right-1 top-1 flex h-[17px] min-w-[17px] items-center justify-center rounded-full px-1 text-[9px] font-black leading-none tabular-nums transition-colors duration-200", active ? item.badge : "bg-[rgb(var(--clinical-queue-selected))] text-clinical-muted")}>
               {count}
             </span>
           </button>

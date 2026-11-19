@@ -21,6 +21,8 @@
   --clinical-soft: 205 226 243;
   --clinical-surface: 255 255 255;
   --clinical-surface-muted: 214 231 244;
+  --clinical-queue-bg: 255 255 255;
+  --clinical-queue-selected: 214 231 244;
   --clinical-border: 26 139 199;
   --shadow-clinical: 0 18px 54px rgba(30, 62, 72, 0.12);
   --shadow-card: 0 16px 42px rgba(26, 139, 199, 0.16);
@@ -47,6 +49,8 @@
   --clinical-soft: 30 45 55;
   --clinical-surface: 25 38 48;
   --clinical-surface-muted: 34 50 61;
+  --clinical-queue-bg: 39 49 57;
+  --clinical-queue-selected: 61 70 78;
   --clinical-border: 255 255 255;
   --shadow-clinical: 0 24px 70px rgba(0, 0, 0, 0.38);
   --shadow-card: 0 18px 52px rgba(0, 0, 0, 0.30);
