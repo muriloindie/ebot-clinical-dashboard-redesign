@@ -7,6 +7,7 @@ import {
   Bot,
   Check,
   CheckCheck,
+  CheckCircle2,
   CircleAlert,
   Clock3,
   Flag,
@@ -20,6 +21,7 @@ import {
   Plus,
   Search,
   Send,
+  SlidersHorizontal,
   StickyNote,
   Timer,
   UserPlus,
@@ -50,7 +52,7 @@ import { ChannelIcon } from "@/components/ui/ChannelIcon";
 import { ViewSwitch } from "@/components/ui/ViewSwitch";
 import { PriorityBadge } from "@/components/ui/PriorityBadge";
 import { Timeline } from "@/components/ui/Timeline";
-import { PageHeader, StatePanel } from "@/components/ui/Week1Primitives";
+import { PageHeader } from "@/components/ui/Week1Primitives";
 import { ChatComposer, type ComposerMessage } from "@/components/operations/ChatComposer";
 import { QuickReplies } from "@/components/operations/QuickReplies";
 import { cn } from "@/lib/cn";
@@ -58,10 +60,27 @@ import { cn } from "@/lib/cn";
 type StoredMessage = ComposerMessage & { id: string; from: AttendanceMessage["from"]; time: string };
 type StoredAttendance = Attendance & { dateOffset?: number; notes?: string[] };
 type ViewMode = "lista" | "cards";
+type QueueGroup = "Atendendo" | "Aguardando" | "Resolvidos";
 
 const CACHE_MESSAGES = "ebot-week2-attendance-messages";
 const CACHE_ROWS = "ebot-week2-attendances";
 const ALL = "Todos";
+
+const queueGroupDefinitions = [
+  { id: "Atendendo", icon: MessageSquareText, tone: "text-clinical-blueText", badge: "bg-clinical-blue/10 text-clinical-blueText" },
+  { id: "Aguardando", icon: Clock3, tone: "text-clinical-orange", badge: "bg-clinical-orange/12 text-clinical-orange" },
+  { id: "Resolvidos", icon: CheckCircle2, tone: "text-clinical-green", badge: "bg-clinical-green/12 text-clinical-green" }
+] as const;
+
+function getQueueGroup(status: AttendanceStatus): QueueGroup {
+  if (status === "Aguardando") return "Aguardando";
+  if (status === "Em atendimento humano") return "Atendendo";
+  return "Resolvidos";
+}
+
+function belongsToQueueGroup(attendance: Attendance, group: QueueGroup) {
+  return getQueueGroup(attendance.status) === group;
+}
 
 const statusTone: Record<AttendanceStatus, "blue" | "orange" | "green" | "neutral"> = {
   Aguardando: "orange",
@@ -113,9 +132,10 @@ export function AttendancesPage() {
   const [messages, setMessages] = useState<Record<string, StoredMessage[]>>({});
   const [selectedId, setSelectedId] = useState(attendances[0].id);
   const [view, setView] = useState<ViewMode>("lista");
+  const [queueGroup, setQueueGroup] = useState<QueueGroup>(() => getQueueGroup(attendances[0].status));
+  const [filtersOpen, setFiltersOpen] = useState(false);
   const [search, setSearch] = useState("");
   const [channel, setChannel] = useState(ALL);
-  const [status, setStatus] = useState(ALL);
   const [responsible, setResponsible] = useState(ALL);
   const [priority, setPriority] = useState(ALL);
   const [unit, setUnit] = useState(ALL);
@@ -134,7 +154,6 @@ export function AttendancesPage() {
   const messagesRef = useRef<Record<string, StoredMessage[]>>({});
 
   usePageEnter(pageRef, [
-    { selector: "[data-filter-bar]", from: { opacity: 0, y: 14 }, to: { duration: 0.45, ease: "power3.out" } },
     { selector: "[data-chat-panel]", from: { opacity: 0, x: 24 }, to: { duration: 0.5, ease: "power3.out" } },
     { selector: "[data-queue-panel]", from: { opacity: 0, x: -24 }, to: { duration: 0.5, ease: "power3.out" } }
   ], { stagger: 0.05, delay: 0.05 });
@@ -150,30 +169,32 @@ export function AttendancesPage() {
     messagesRef.current = nextMessages;
     setRows(cachedRows);
     setMessages(nextMessages);
+    const first = cachedRows[0];
+    setSelectedId(first?.id ?? "");
+    if (first) setQueueGroup(getQueueGroup(first.status));
   }, []);
 
-  const selected = rows.find((attendance) => attendance.id === selectedId) ?? rows[0];
+  const selected = rows.find((attendance) => attendance.id === selectedId) ?? null;
   const responsibles = useMemo(() => [ALL, ...Array.from(new Set([...attendanceResponsibles, ...rows.map((row) => row.responsible)]))], [rows]);
   const periods = ["Hoje", "Ontem", "Últimos 7 dias"];
-  const statusOptions = ["Todos", "Aguardando", "Em atendimento humano", "Resolvido pela IA", "Encerrado"];
   const priorityOptions = ["Todos", "Alta", "Média", "Baixa"];
 
-  const hasFilters = channel !== ALL || status !== ALL || responsible !== ALL || priority !== ALL || unit !== ALL || period !== "Hoje";
+  const hasFilters = search.trim() !== "" || channel !== ALL || responsible !== ALL || priority !== ALL || unit !== ALL || period !== "Hoje";
+  const activeFiltersCount = [search.trim() !== "", channel !== ALL, responsible !== ALL, priority !== ALL, unit !== ALL, period !== "Hoje"].filter(Boolean).length;
 
   const filtered = useMemo(() => {
     return rows.filter((attendance) => {
       const conversationText = (messages[attendance.id] ?? []).map((message) => message.text).join(" ").toLowerCase();
       const matchesSearch = `${attendance.patientName} ${attendance.lastMessage} ${attendance.phone} ${attendance.id} ${conversationText}`.toLowerCase().includes(search.toLowerCase());
       const matchesChannel = channel === ALL || attendance.channel === channel;
-      const matchesStatus = status === ALL || attendance.status === status;
       const matchesResponsible = responsible === ALL || attendance.responsible === responsible;
       const matchesPriority = priority === ALL || attendance.priority === priority;
       const matchesUnit = unit === ALL || attendance.unit === unit;
       const offset = attendanceDateOffset(attendance);
       const matchesPeriod = period === "Hoje" ? offset === 0 : period === "Ontem" ? offset === -1 : offset >= -6 && offset <= 0;
-      return matchesSearch && matchesChannel && matchesStatus && matchesResponsible && matchesPriority && matchesUnit && matchesPeriod;
+      return matchesSearch && matchesChannel && matchesResponsible && matchesPriority && matchesUnit && matchesPeriod;
     });
-  }, [rows, messages, search, channel, status, responsible, priority, unit, period]);
+  }, [rows, messages, search, channel, responsible, priority, unit, period]);
 
   const sorted = useMemo(() => {
     const list = [...filtered];
@@ -183,6 +204,18 @@ export function AttendancesPage() {
     else list.sort((a, b) => a.time.localeCompare(b.time));
     return list;
   }, [filtered, sort]);
+
+  const queueGroups = useMemo(() => ({
+    Atendendo: sorted.filter((attendance) => belongsToQueueGroup(attendance, "Atendendo")),
+    Aguardando: sorted.filter((attendance) => belongsToQueueGroup(attendance, "Aguardando")),
+    Resolvidos: sorted.filter((attendance) => belongsToQueueGroup(attendance, "Resolvidos"))
+  }), [sorted]);
+  const visibleQueueRows = queueGroups[queueGroup];
+
+  useEffect(() => {
+    if (visibleQueueRows.some((attendance) => attendance.id === selectedId)) return;
+    setSelectedId(visibleQueueRows[0]?.id ?? "");
+  }, [selectedId, visibleQueueRows]);
 
   function showNotice(message: string) {
     setNotice(message);
@@ -208,6 +241,9 @@ export function AttendancesPage() {
   }
 
   function patchAttendance(id: string, patch: Partial<StoredAttendance>, extraMessage?: AttendanceMessage) {
+    const current = rowsRef.current.find((row) => row.id === id);
+    const nextStatus = patch.status ?? current?.status;
+    if (current && nextStatus && nextStatus !== current.status) setQueueGroup(getQueueGroup(nextStatus));
     persistRows(rowsRef.current.map((row) => row.id === id ? { ...row, ...patch } : row));
     if (extraMessage) {
       persistMessage(id, { id: extraMessage.id, kind: "text", text: extraMessage.text, from: extraMessage.from, time: extraMessage.time });
@@ -339,6 +375,7 @@ export function AttendancesPage() {
     const nextRows = [next, ...rowsRef.current];
     persistRows(nextRows);
     persistMessage(next.id, { ...initialMessage, kind: "text" });
+    setQueueGroup("Aguardando");
     setSelectedId(next.id);
     setMobileChat(true);
     setNewOpen(false);
@@ -361,11 +398,20 @@ export function AttendancesPage() {
   function clearFilters() {
     setSearch("");
     setChannel(ALL);
-    setStatus(ALL);
     setResponsible(ALL);
     setPriority(ALL);
     setUnit(ALL);
     setPeriod("Hoje");
+  }
+
+  function changeQueueGroup(group: QueueGroup) {
+    if (group === queueGroup) {
+      setMobileChat(false);
+      return;
+    }
+    setQueueGroup(group);
+    setSelectedId(queueGroups[group][0]?.id ?? "");
+    setMobileChat(false);
   }
 
   const unreadTotal = rows.reduce((sum, row) => sum + row.unread, 0);
@@ -377,10 +423,34 @@ export function AttendancesPage() {
         title="Atendimentos"
         description="Gerencie conversas, pacientes e atendimentos em tempo real."
         aside={<span className="inline-flex items-center gap-2 rounded-full bg-clinical-orange/[0.10] px-3 py-2 text-xs font-extrabold text-clinical-orange"><Clock3 className="size-4" />{unreadTotal} não lidos na fila</span>}
-        action={<Button onClick={() => setNewOpen(true)}><UserPlus className="size-4" />Novo atendimento</Button>}
+        action={(
+          <>
+            <Button
+              variant="secondary"
+              aria-label={activeFiltersCount ? `Filtros, ${activeFiltersCount} ativos` : "Filtros"}
+              aria-expanded={filtersOpen}
+              aria-controls="attendance-filters"
+              onClick={() => setFiltersOpen((open) => !open)}
+            >
+              <SlidersHorizontal className="size-4" />Filtros
+              {activeFiltersCount ? <span className="flex size-5 items-center justify-center rounded-full bg-clinical-blue/10 text-[10px] font-black tabular-nums text-clinical-blueText">{activeFiltersCount}</span> : null}
+            </Button>
+            <Button onClick={() => setNewOpen(true)}><UserPlus className="size-4" />Novo atendimento</Button>
+          </>
+        )}
       />
 
-      <div data-filter-bar className="mb-3 flex shrink-0 flex-col gap-2 rounded-[24px] border border-clinical-border/[0.14] bg-clinical-surface/70 p-2.5">
+      <div
+        id="attendance-filters"
+        aria-hidden={!filtersOpen}
+        inert={!filtersOpen}
+        className={cn(
+          "grid shrink-0 transition-[grid-template-rows,opacity,margin] duration-200 ease-[cubic-bezier(0.2,0,0,1)] motion-reduce:transition-none",
+          filtersOpen ? "mb-3 grid-rows-[1fr] opacity-100" : "pointer-events-none mb-0 grid-rows-[0fr] opacity-0"
+        )}
+      >
+        <div className="min-h-0 overflow-hidden">
+      <div className="flex flex-col gap-2 rounded-[24px] border border-clinical-border/[0.14] bg-clinical-surface/70 p-2.5">
         <div className="flex items-center justify-between gap-2">
           <p className="text-[11px] font-extrabold uppercase tracking-[0.14em] text-clinical-muted">Filtros da fila</p>
           <div className="flex shrink-0 items-center gap-2">
@@ -392,13 +462,14 @@ export function AttendancesPage() {
             ) : null}
           </div>
         </div>
-        <div className="grid grid-cols-2 gap-2 md:grid-cols-3 xl:grid-cols-6">
+        <div className="grid grid-cols-2 gap-2 md:grid-cols-3 xl:grid-cols-5">
           <Dropdown label="Canal" value={channel} options={[ALL, ...attendanceChannels]} onChange={setChannel} />
-          <Dropdown label="Status" value={status} options={statusOptions} onChange={setStatus} />
           <Dropdown label="Prioridade" value={priority} options={priorityOptions} onChange={setPriority} />
           <Dropdown label="Atendente" value={responsible} options={responsibles} onChange={setResponsible} />
           <Dropdown label="Unidade" value={unit} options={[ALL, ...attendanceUnits]} onChange={setUnit} />
           <Dropdown label="Período" value={period} options={periods} onChange={setPeriod} />
+        </div>
+      </div>
         </div>
       </div>
 
@@ -409,28 +480,28 @@ export function AttendancesPage() {
         </div>
       ) : null}
 
-      {filtered.length === 0 ? (
-        <StatePanel
-          icon={CircleAlert}
-          title="Nenhum atendimento encontrado"
-          description="Ajuste a busca ou os filtros para encontrar o que procura."
-          action={<Button size="sm" variant="secondary" onClick={clearFilters}>Limpar filtros</Button>}
-        />
-      ) : (
-        <div className="grid min-h-0 flex-1 gap-4 md:grid-cols-[minmax(240px,0.66fr)_minmax(0,1.34fr)] md:items-stretch">
+        <div className="grid min-h-0 flex-1 gap-3 md:grid-cols-[minmax(240px,0.66fr)_minmax(0,1.34fr)] md:items-stretch xl:gap-4">
           <section data-queue-panel className={cn("min-h-0 min-w-0 flex-col overflow-hidden rounded-[24px] border border-clinical-border/[0.14] bg-clinical-surface/75 md:flex md:h-full", mobileChat ? "hidden" : "flex")}>
-            <div className="border-b border-clinical-border/[0.12] px-4 py-3">
+            <div className="border-b border-clinical-border/[0.12] px-3.5 py-3">
               <div className="flex items-center justify-between gap-2">
-                <h2 className="text-sm font-extrabold text-clinical-dark">Fila de atendimento</h2>
-                <span className="text-xs font-bold text-clinical-muted">{filtered.length} registros</span>
+                <div className="min-w-0">
+                  <h2 className="text-sm font-extrabold text-clinical-dark">Fila de atendimento</h2>
+                  <p className="mt-0.5 text-[11px] font-semibold text-clinical-muted">{visibleQueueRows.length} {visibleQueueRows.length === 1 ? "atendimento" : "atendimentos"} em {queueGroup.toLowerCase()}</p>
+                </div>
+                <span className="shrink-0 rounded-full bg-clinical-surfaceMuted/70 px-2.5 py-1 text-[11px] font-bold text-clinical-muted" aria-label={`${filtered.length} atendimentos encontrados no total`}>
+                  {filtered.length} no total
+                </span>
               </div>
-              <div className="mt-2.5 flex items-center gap-2">
+              <div className="mt-3">
+                <QueueGroupNavigation group={queueGroup} counts={queueGroups} onChange={changeQueueGroup} />
+              </div>
+              <div className="mt-3 flex items-center gap-2">
                 <label className="flex h-9 min-w-0 flex-1 items-center gap-2 rounded-xl border border-clinical-border/[0.14] bg-clinical-surface/80 px-3 text-xs text-clinical-muted transition focus-within:border-clinical-blue/45 focus-within:ring-2 focus-within:ring-clinical-blue/10">
                   <Search className="size-3.5 shrink-0 text-clinical-blue" aria-hidden="true" />
-                  <span className="sr-only">Buscar na fila</span>
-                  <input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Nome ou texto da conversa" className="min-w-0 flex-1 bg-transparent font-medium text-clinical-dark outline-none placeholder:text-clinical-muted/70" />
+                  <span className="sr-only">Buscar nas conversas</span>
+                  <input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Nome ou mensagem" className="min-w-0 flex-1 bg-transparent font-medium text-clinical-dark outline-none placeholder:text-clinical-muted/70" />
                 </label>
-                <select value={sort} onChange={(event) => setSort(event.target.value)} aria-label="Ordenar fila" className="h-9 shrink-0 cursor-pointer rounded-xl border border-clinical-border/[0.14] bg-clinical-surface/80 px-2.5 text-xs font-extrabold text-clinical-muted outline-none transition focus:border-clinical-blue/45">
+                <select value={sort} onChange={(event) => setSort(event.target.value)} aria-label="Ordenar conversas" className="h-9 shrink-0 cursor-pointer rounded-xl border border-clinical-border/[0.14] bg-clinical-surface/80 px-2.5 text-xs font-extrabold text-clinical-muted outline-none transition focus:border-clinical-blue/45">
                   <option value="prioridade">Prioridade</option>
                   <option value="recente">Mais recentes</option>
                   <option value="antigo">Mais antigos</option>
@@ -438,15 +509,22 @@ export function AttendancesPage() {
               </div>
             </div>
             <div className="clinical-scrollbar min-h-0 flex-1 overflow-y-auto p-2">
-              {view === "lista" ? (
+              {visibleQueueRows.length === 0 ? (
+                <div className="flex min-h-52 flex-col items-center justify-center px-5 py-8 text-center">
+                  <span className="flex size-10 items-center justify-center rounded-2xl bg-clinical-surfaceMuted/70 text-clinical-muted"><CircleAlert className="size-5" /></span>
+                  <p className="mt-3 text-sm font-extrabold text-clinical-dark">Nenhum atendimento {queueGroup.toLowerCase()}</p>
+                  <p className="mt-1 max-w-[24ch] text-xs leading-5 text-clinical-muted">{hasFilters ? "Tente ajustar a busca ou os filtros da fila." : "Quando houver conversas neste grupo, elas aparecerão aqui."}</p>
+                  {hasFilters ? <button type="button" onClick={clearFilters} className="mt-3 rounded-lg px-2.5 py-1.5 text-xs font-bold text-clinical-blueText transition hover:bg-clinical-blue/10">Limpar filtros</button> : null}
+                </div>
+              ) : view === "lista" ? (
                 <div className="space-y-1">
-                  {sorted.map((attendance) => (
+                  {visibleQueueRows.map((attendance) => (
                     <AttendanceRow key={attendance.id} attendance={attendance} active={attendance.id === selected?.id} onSelect={() => selectAttendance(attendance.id)} />
                   ))}
                 </div>
               ) : (
                 <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 xl:grid-cols-1 2xl:grid-cols-2">
-                  {sorted.map((attendance) => (
+                  {visibleQueueRows.map((attendance) => (
                     <AttendanceCard key={attendance.id} attendance={attendance} active={attendance.id === selected?.id} onSelect={() => selectAttendance(attendance.id)} />
                   ))}
                 </div>
@@ -456,32 +534,35 @@ export function AttendancesPage() {
 
           <section data-chat-panel className={cn("min-h-0 min-w-0 flex-col overflow-hidden rounded-[24px] border border-clinical-blue/15 bg-clinical-surface shadow-[0_18px_44px_rgba(38,53,50,0.10)] md:flex md:h-full", mobileChat ? "flex" : "hidden")}>
             <div className="flex items-center gap-2 border-b border-clinical-border/[0.12] px-2 py-1.5 md:hidden">
-              <button type="button" onClick={() => setMobileChat(false)} className="flex h-9 items-center gap-1.5 rounded-xl px-2 text-xs font-extrabold text-clinical-blue transition hover:bg-clinical-blue/10" aria-label="Voltar para a fila de atendimento">
-                <ArrowLeft className="size-4" />Fila
+              <button type="button" onClick={() => setMobileChat(false)} className="flex h-9 items-center gap-1.5 rounded-xl px-2 text-xs font-extrabold text-clinical-blue transition hover:bg-clinical-blue/10" aria-label={`Voltar para ${queueGroup.toLowerCase()}`}>
+                <ArrowLeft className="size-4" />{queueGroup}
               </button>
             </div>
-            <ChatPane
-              attendance={selected}
-              messages={messages[selected?.id ?? ""] ?? []}
-              onSend={sendMessage}
-              onAssume={assumeAttendance}
-              onTransfer={() => setTransferOpen(true)}
-              onClose={() => setCloseOpen(true)}
-              onReopen={reopenAttendance}
-              onPhone={() => showNotice(`Ligação local preparada para ${selected?.patientName ?? "o paciente"}.`)}
-              onVideo={() => showNotice(`Videochamada local preparada para ${selected?.patientName ?? "o paciente"}.`)}
-              onMenuAction={(action) => {
-                if (action === "unread") markSelectedUnread();
-                if (action === "profile") setProfileDrawerOpen(true);
-                if (action === "id") showNotice(`Identificação do atendimento: ${selected?.id ?? "indisponível"}.`);
-              }}
-              onOpenProfile={() => setProfileDrawerOpen(true)}
-              quickOpen={quickOpen}
-              setQuickOpen={setQuickOpen}
-            />
+            {selected ? (
+              <ChatPane
+                attendance={selected}
+                messages={messages[selected.id] ?? []}
+                onSend={sendMessage}
+                onAssume={assumeAttendance}
+                onTransfer={() => setTransferOpen(true)}
+                onClose={() => setCloseOpen(true)}
+                onReopen={reopenAttendance}
+                onPhone={() => showNotice(`Ligação local preparada para ${selected.patientName}.`)}
+                onVideo={() => showNotice(`Videochamada local preparada para ${selected.patientName}.`)}
+                onMenuAction={(action) => {
+                  if (action === "unread") markSelectedUnread();
+                  if (action === "profile") setProfileDrawerOpen(true);
+                  if (action === "id") showNotice(`Identificação do atendimento: ${selected.id}.`);
+                }}
+                onOpenProfile={() => setProfileDrawerOpen(true)}
+                quickOpen={quickOpen}
+                setQuickOpen={setQuickOpen}
+              />
+            ) : (
+              <EmptyChatState group={queueGroup} />
+            )}
           </section>
-        </div>
-      )}
+      </div>
 
       <Drawer open={profileDrawerOpen} onClose={() => setProfileDrawerOpen(false)} title="Perfil do paciente" description={selected?.patientName} width="max-w-lg">
         {selected ? <PatientProfilePane attendance={selected} onOpenProfile={() => { setProfileDrawerOpen(false); router.push(`/contatos?q=${encodeURIComponent(selected.patientName)}`); }} onAddNote={() => setNoteOpen(true)} /> : null}
@@ -558,7 +639,7 @@ function AttendanceRow({ attendance, active, onSelect }: { attendance: Attendanc
       type="button"
       onClick={onSelect}
       className={cn(
-        "animate-list-in w-full rounded-2xl border p-3 text-left transition duration-200",
+        "animate-list-in motion-reduce:animate-none w-full rounded-2xl border p-3 text-left transition duration-200 motion-reduce:transition-none",
         active ? "border-clinical-blue/30 bg-clinical-blue/[0.09] shadow-[0_8px_22px_rgba(58,157,202,0.10)]" : "border-transparent hover:bg-clinical-surfaceMuted/70"
       )}
     >
@@ -601,7 +682,7 @@ function AttendanceCard({ attendance, active, onSelect }: { attendance: Attendan
       type="button"
       onClick={onSelect}
       className={cn(
-        "animate-list-in rounded-2xl border p-4 text-left transition duration-200",
+        "animate-list-in motion-reduce:animate-none rounded-2xl border p-4 text-left transition duration-200 motion-reduce:transition-none",
         active ? "border-clinical-blue/30 bg-clinical-blue/[0.09]" : "border-clinical-border/[0.12] bg-clinical-surfaceMuted/30 hover:border-clinical-blue/25 hover:bg-clinical-surface"
       )}
     >
@@ -639,6 +720,69 @@ function StatusChip({ label, tone }: { label: string; tone: "blue" | "orange" | 
     neutral: "bg-clinical-surfaceMuted text-clinical-muted"
   }[tone];
   return <span className={cn("inline-flex items-center rounded-full px-2.5 py-1 text-[11px] font-extrabold", styles)}>{label}</span>;
+}
+
+function QueueGroupNavigation({
+  group,
+  counts,
+  onChange
+}: {
+  group: QueueGroup;
+  counts: Record<QueueGroup, Attendance[]>;
+  onChange: (group: QueueGroup) => void;
+}) {
+  const activeIndex = queueGroupDefinitions.findIndex((item) => item.id === group);
+
+  return (
+    <nav
+      aria-label="Grupos de atendimento"
+      className="relative isolate grid grid-cols-3 rounded-[18px] border border-clinical-border/[0.16] bg-[rgb(var(--clinical-queue-bg))] p-1 shadow-[0_7px_0_rgba(16,31,43,0.035),0_12px_22px_rgba(16,31,43,0.12),inset_0_1px_0_rgba(255,255,255,0.38)]"
+    >
+      <span
+        aria-hidden="true"
+        className="pointer-events-none absolute bottom-1 left-1 top-1 z-0 w-[calc((100%_-_0.5rem)_/_3)] rounded-[13px] border border-clinical-border/[0.10] bg-[rgb(var(--clinical-queue-selected))] shadow-[0_4px_8px_rgba(16,31,43,0.08),inset_0_1px_0_rgba(255,255,255,0.38)] transition-transform duration-[240ms] ease-[cubic-bezier(0.2,0,0,1)] motion-reduce:transition-none"
+        style={{ transform: `translateX(${activeIndex * 100}%)` }}
+      />
+      {queueGroupDefinitions.map((item) => {
+        const active = group === item.id;
+        const count = counts[item.id].length;
+        const Icon = item.icon;
+
+        return (
+          <button
+            key={item.id}
+            type="button"
+            aria-pressed={active}
+            aria-label={`${item.id}, ${count} ${count === 1 ? "atendimento" : "atendimentos"}`}
+            onClick={() => onChange(item.id)}
+            className={cn(
+              "relative z-10 flex min-w-0 flex-col items-center justify-center gap-0.5 rounded-xl px-1 pb-1.5 pt-1 text-[10px] font-extrabold leading-4 transition-colors duration-200 ease-out focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-clinical-blue/50 focus-visible:ring-offset-2 focus-visible:ring-offset-clinical-surface motion-reduce:transition-none sm:text-[11px]",
+              active ? "text-clinical-dark" : "text-clinical-muted hover:text-clinical-dark"
+            )}
+          >
+            <Icon className={cn("size-3.5 transition-transform duration-200 ease-out motion-reduce:transition-none", item.tone, active && "scale-110")} aria-hidden="true" />
+            <span className="max-w-full truncate">{item.id}</span>
+            <span className={cn("absolute right-1 top-1 flex h-[17px] min-w-[17px] items-center justify-center rounded-full px-1 text-[9px] font-black leading-none tabular-nums transition-colors duration-200", active ? item.badge : "bg-[rgb(var(--clinical-queue-selected))] text-clinical-muted")}>
+              {count}
+            </span>
+          </button>
+        );
+      })}
+    </nav>
+  );
+}
+
+function EmptyChatState({ group }: { group: QueueGroup }) {
+  return (
+    <div className="flex min-h-[320px] flex-1 flex-col items-center justify-center px-6 py-10 text-center">
+      <span className="flex size-12 items-center justify-center rounded-2xl border border-clinical-border/[0.12] bg-clinical-surfaceMuted/45 text-clinical-blueText">
+        <MessageSquareText className="size-5" aria-hidden="true" />
+      </span>
+      <p className="mt-5 text-[11px] font-extrabold uppercase tracking-[0.12em] text-clinical-muted">{group}</p>
+      <h2 className="mt-1 text-base font-extrabold text-clinical-dark">Nenhuma conversa para abrir</h2>
+      <p className="mt-2 max-w-[34ch] text-sm leading-6 text-clinical-muted">Este grupo não tem atendimentos com os filtros atuais. Escolha outro grupo ou ajuste a busca.</p>
+    </div>
+  );
 }
 
 function ChatPane({
