@@ -8,10 +8,13 @@ import {
   Check,
   CheckCheck,
   CheckCircle2,
+  ChevronDown,
   CircleAlert,
   Clock3,
   Flag,
   Headphones,
+  Inbox,
+  Layers3,
   LayoutGrid,
   List,
   MessageSquareText,
@@ -41,6 +44,8 @@ import {
   type AttendanceStatus
 } from "@/data/attendanceMock";
 import { readLocalCache, writeLocalCache } from "@/lib/localCache";
+import { listSectors } from "@/lib/company/companyService";
+import type { Sector } from "@/lib/company/types";
 import { usePageEnter } from "@/lib/usePageEnter";
 import { Button } from "@/components/ui/Button";
 import { Drawer } from "@/components/ui/Drawer";
@@ -60,7 +65,8 @@ import { cn } from "@/lib/cn";
 type StoredMessage = ComposerMessage & { id: string; from: AttendanceMessage["from"]; time: string };
 type StoredAttendance = Attendance & { dateOffset?: number; notes?: string[] };
 type ViewMode = "lista" | "cards";
-type QueueGroup = "Atendendo" | "Aguardando" | "Resolvidos";
+type QueueGroup = "Atendendo" | "Aguardando" | "Resolvidos" | "Grupos";
+type SectorBucket = { key: string; name: string; color: string | null; rows: Attendance[] };
 
 const CACHE_MESSAGES = "ebot-week2-attendance-messages";
 const CACHE_ROWS = "ebot-week2-attendances";
@@ -69,8 +75,11 @@ const ALL = "Todos";
 const queueGroupDefinitions = [
   { id: "Atendendo", icon: MessageSquareText, tone: "text-clinical-blueText", badge: "bg-clinical-blue/10 text-clinical-blueText" },
   { id: "Aguardando", icon: Clock3, tone: "text-clinical-orange", badge: "bg-clinical-orange/12 text-clinical-orange" },
-  { id: "Resolvidos", icon: CheckCircle2, tone: "text-clinical-green", badge: "bg-clinical-green/12 text-clinical-green" }
+  { id: "Resolvidos", icon: CheckCircle2, tone: "text-clinical-green", badge: "bg-clinical-green/12 text-clinical-green" },
+  { id: "Grupos", icon: Layers3, tone: "text-clinical-teal", badge: "bg-clinical-teal/12 text-clinical-teal" }
 ] as const;
+
+const SEM_SETOR_KEY = "sem-setor";
 
 function getQueueGroup(status: AttendanceStatus): QueueGroup {
   if (status === "Aguardando") return "Aguardando";
@@ -112,8 +121,9 @@ function sanitizeRows(source: StoredAttendance[]): StoredAttendance[] {
     const priority = row.priority ?? fallback?.priority ?? "Média";
     const status = row.status && statusTone[row.status as AttendanceStatus] ? row.status : fallback?.status ?? "Aguardando";
     const channel = typeof row.channel === "string" ? row.channel : fallback?.channel ?? "WhatsApp";
+    const sector = typeof row.sector === "string" ? row.sector : fallback?.sector ?? "";
     const unread = typeof row.unread === "number" && Number.isFinite(row.unread) ? row.unread : 0;
-    return { ...row, patientName, messages, priority, status, channel, unread };
+    return { ...row, patientName, messages, priority, status, channel, sector, unread };
   });
 }
 
@@ -129,10 +139,12 @@ export function AttendancesPage() {
   const pageRef = useRef<HTMLDivElement>(null);
 
   const [rows, setRows] = useState<StoredAttendance[]>(attendances);
+  const [sectors] = useState<Sector[]>(() => listSectors());
   const [messages, setMessages] = useState<Record<string, StoredMessage[]>>({});
   const [selectedId, setSelectedId] = useState(attendances[0].id);
   const [view, setView] = useState<ViewMode>("lista");
   const [queueGroup, setQueueGroup] = useState<QueueGroup>(() => getQueueGroup(attendances[0].status));
+  const [expandedSectors, setExpandedSectors] = useState<Record<string, boolean>>({});
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [search, setSearch] = useState("");
   const [channel, setChannel] = useState(ALL);
@@ -208,9 +220,36 @@ export function AttendancesPage() {
   const queueGroups = useMemo(() => ({
     Atendendo: sorted.filter((attendance) => belongsToQueueGroup(attendance, "Atendendo")),
     Aguardando: sorted.filter((attendance) => belongsToQueueGroup(attendance, "Aguardando")),
-    Resolvidos: sorted.filter((attendance) => belongsToQueueGroup(attendance, "Resolvidos"))
+    Resolvidos: sorted.filter((attendance) => belongsToQueueGroup(attendance, "Resolvidos")),
+    Grupos: sorted
   }), [sorted]);
   const visibleQueueRows = queueGroups[queueGroup];
+
+  const sectorBuckets = useMemo<SectorBucket[]>(() => {
+    const byName = new Map(sectors.map((sector) => [sector.name.trim().toLowerCase(), sector]));
+    const buckets: SectorBucket[] = sectors.map((sector) => ({ key: sector.id, name: sector.name, color: sector.color, rows: [] }));
+    const unassigned: SectorBucket = { key: SEM_SETOR_KEY, name: "Atendimentos sem setor", color: null, rows: [] };
+    for (const attendance of visibleQueueRows) {
+      const sector = byName.get((attendance.sector ?? "").trim().toLowerCase());
+      const bucket = sector ? buckets.find((item) => item.key === sector.id) : unassigned;
+      (bucket ?? unassigned).rows.push(attendance);
+    }
+    return [unassigned, ...buckets];
+  }, [sectors, visibleQueueRows]);
+
+  const defaultOpenBucketKey = useMemo(() => {
+    const withSelected = sectorBuckets.find((bucket) => bucket.rows.some((attendance) => attendance.id === selectedId));
+    return (withSelected ?? sectorBuckets.find((bucket) => bucket.rows.length > 0))?.key ?? "";
+  }, [sectorBuckets, selectedId]);
+
+  function isBucketOpen(key: string) {
+    return expandedSectors[`${queueGroup}|${key}`] ?? key === defaultOpenBucketKey;
+  }
+
+  function toggleBucket(key: string) {
+    const storageKey = `${queueGroup}|${key}`;
+    setExpandedSectors((current) => ({ ...current, [storageKey]: !(current[storageKey] ?? key === defaultOpenBucketKey) }));
+  }
 
   useEffect(() => {
     if (visibleQueueRows.some((attendance) => attendance.id === selectedId)) return;
@@ -243,7 +282,7 @@ export function AttendancesPage() {
   function patchAttendance(id: string, patch: Partial<StoredAttendance>, extraMessage?: AttendanceMessage) {
     const current = rowsRef.current.find((row) => row.id === id);
     const nextStatus = patch.status ?? current?.status;
-    if (current && nextStatus && nextStatus !== current.status) setQueueGroup(getQueueGroup(nextStatus));
+    if (current && nextStatus && nextStatus !== current.status && queueGroup !== "Grupos") setQueueGroup(getQueueGroup(nextStatus));
     persistRows(rowsRef.current.map((row) => row.id === id ? { ...row, ...patch } : row));
     if (extraMessage) {
       persistMessage(id, { id: extraMessage.id, kind: "text", text: extraMessage.text, from: extraMessage.from, time: extraMessage.time });
@@ -361,7 +400,7 @@ export function AttendancesPage() {
       responsible: "IA",
       source: "IA" as AttendanceSource,
       unit: String(form.get("unit") ?? "Unidade Centro") as Attendance["unit"],
-      sector: String(form.get("sector") ?? "Recepção"),
+      sector: String(form.get("sector") ?? sectors[0]?.name ?? "Atendimento"),
       queue: String(form.get("queue") ?? "Primeiro contato"),
       lastMessage: "Atendimento iniciado pela equipe.",
       time: "agora",
@@ -375,7 +414,7 @@ export function AttendancesPage() {
     const nextRows = [next, ...rowsRef.current];
     persistRows(nextRows);
     persistMessage(next.id, { ...initialMessage, kind: "text" });
-    setQueueGroup("Aguardando");
+    setQueueGroup((current) => (current === "Grupos" ? "Grupos" : "Aguardando"));
     setSelectedId(next.id);
     setMobileChat(true);
     setNewOpen(false);
@@ -480,13 +519,13 @@ export function AttendancesPage() {
         </div>
       ) : null}
 
-        <div className="grid min-h-0 flex-1 gap-3 md:grid-cols-[minmax(240px,0.66fr)_minmax(0,1.34fr)] md:items-stretch xl:gap-4">
+        <div className="grid min-h-0 flex-1 gap-3 md:grid-cols-[minmax(300px,0.68fr)_minmax(0,1.32fr)] md:items-stretch xl:gap-4">
           <section data-queue-panel className={cn("min-h-0 min-w-0 flex-col overflow-hidden rounded-[24px] border border-clinical-border/[0.14] bg-clinical-surface/75 md:flex md:h-full", mobileChat ? "hidden" : "flex")}>
             <div className="border-b border-clinical-border/[0.12] px-3.5 py-3">
               <div className="flex items-center justify-between gap-2">
                 <div className="min-w-0">
                   <h2 className="text-sm font-extrabold text-clinical-dark">Fila de atendimento</h2>
-                  <p className="mt-0.5 text-[11px] font-semibold text-clinical-muted">{visibleQueueRows.length} {visibleQueueRows.length === 1 ? "atendimento" : "atendimentos"} em {queueGroup.toLowerCase()}</p>
+                  <p className="mt-0.5 text-[11px] font-semibold text-clinical-muted">{visibleQueueRows.length} {visibleQueueRows.length === 1 ? "atendimento" : "atendimentos"} {queueGroup === "Grupos" ? "em todos os grupos" : `em ${queueGroup.toLowerCase()}`}</p>
                 </div>
                 <span className="shrink-0 rounded-full bg-clinical-surfaceMuted/70 px-2.5 py-1 text-[11px] font-bold text-clinical-muted" aria-label={`${filtered.length} atendimentos encontrados no total`}>
                   {filtered.length} no total
@@ -512,20 +551,24 @@ export function AttendancesPage() {
               {visibleQueueRows.length === 0 ? (
                 <div className="flex min-h-52 flex-col items-center justify-center px-5 py-8 text-center">
                   <span className="flex size-10 items-center justify-center rounded-2xl bg-clinical-surfaceMuted/70 text-clinical-muted"><CircleAlert className="size-5" /></span>
-                  <p className="mt-3 text-sm font-extrabold text-clinical-dark">Nenhum atendimento {queueGroup.toLowerCase()}</p>
+                  <p className="mt-3 text-sm font-extrabold text-clinical-dark">Nenhum atendimento {queueGroup === "Grupos" ? "nos grupos" : queueGroup.toLowerCase()}</p>
                   <p className="mt-1 max-w-[24ch] text-xs leading-5 text-clinical-muted">{hasFilters ? "Tente ajustar a busca ou os filtros da fila." : "Quando houver conversas neste grupo, elas aparecerão aqui."}</p>
                   {hasFilters ? <button type="button" onClick={clearFilters} className="mt-3 rounded-lg px-2.5 py-1.5 text-xs font-bold text-clinical-blueText transition hover:bg-clinical-blue/10">Limpar filtros</button> : null}
                 </div>
-              ) : view === "lista" ? (
-                <div className="space-y-1">
-                  {visibleQueueRows.map((attendance) => (
-                    <AttendanceRow key={attendance.id} attendance={attendance} active={attendance.id === selected?.id} onSelect={() => selectAttendance(attendance.id)} />
-                  ))}
-                </div>
               ) : (
-                <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 xl:grid-cols-1 2xl:grid-cols-2">
-                  {visibleQueueRows.map((attendance) => (
-                    <AttendanceCard key={attendance.id} attendance={attendance} active={attendance.id === selected?.id} onSelect={() => selectAttendance(attendance.id)} />
+                <div key={queueGroup} className="space-y-2">
+                  {sectorBuckets.map((bucket, index) => (
+                    <SectorAccordion
+                      key={bucket.key}
+                      bucket={bucket}
+                      index={index}
+                      open={isBucketOpen(bucket.key)}
+                      onToggle={() => toggleBucket(bucket.key)}
+                      view={view}
+                      selectedId={selected?.id ?? ""}
+                      onSelect={selectAttendance}
+                      showBreakdown={queueGroup === "Grupos"}
+                    />
                   ))}
                 </div>
               )}
@@ -582,8 +625,9 @@ export function AttendancesPage() {
             <ModalSelect name="unit" label="Unidade" icon={Headphones} defaultValue="Unidade Centro">
               <option>Unidade Centro</option><option>Unidade Norte</option><option>Unidade Sul</option>
             </ModalSelect>
-            <ModalSelect name="sector" label="Setor" icon={StickyNote} defaultValue="Recepção">
-              <option>Recepção</option><option>Cardiologia</option><option>Ortopedia</option><option>Dermatologia</option><option>Pediatria</option><option>Exames</option>
+            <ModalSelect name="sector" label="Setor" icon={StickyNote} defaultValue={sectors[0]?.name ?? "Atendimento"}>
+              {(sectors.length ? sectors.map((sector) => sector.name) : ["Atendimento"]).map((name) => <option key={name}>{name}</option>)}
+              <option value="">Sem setor</option>
             </ModalSelect>
             <ModalField name="queue" label="Fila" icon={List} placeholder="Ex.: Primeiro contato" className="sm:col-span-2" />
           </div>
@@ -633,11 +677,12 @@ export function AttendancesPage() {
   );
 }
 
-function AttendanceRow({ attendance, active, onSelect }: { attendance: Attendance; active: boolean; onSelect: () => void }) {
+function AttendanceRow({ attendance, active, onSelect, index = 0 }: { attendance: Attendance; active: boolean; onSelect: () => void; index?: number }) {
   return (
     <button
       type="button"
       onClick={onSelect}
+      style={{ animationDelay: `${Math.min(index, 8) * 30}ms` }}
       className={cn(
         "animate-list-in motion-reduce:animate-none w-full rounded-2xl border p-3 text-left transition duration-200 motion-reduce:transition-none",
         active ? "border-clinical-blue/30 bg-clinical-blue/[0.09] shadow-[0_8px_22px_rgba(58,157,202,0.10)]" : "border-transparent hover:bg-clinical-surfaceMuted/70"
@@ -676,11 +721,12 @@ function AttendanceRow({ attendance, active, onSelect }: { attendance: Attendanc
   );
 }
 
-function AttendanceCard({ attendance, active, onSelect }: { attendance: Attendance; active: boolean; onSelect: () => void }) {
+function AttendanceCard({ attendance, active, onSelect, index = 0 }: { attendance: Attendance; active: boolean; onSelect: () => void; index?: number }) {
   return (
     <button
       type="button"
       onClick={onSelect}
+      style={{ animationDelay: `${Math.min(index, 8) * 30}ms` }}
       className={cn(
         "animate-list-in motion-reduce:animate-none rounded-2xl border p-4 text-left transition duration-200 motion-reduce:transition-none",
         active ? "border-clinical-blue/30 bg-clinical-blue/[0.09]" : "border-clinical-border/[0.12] bg-clinical-surfaceMuted/30 hover:border-clinical-blue/25 hover:bg-clinical-surface"
@@ -736,11 +782,11 @@ function QueueGroupNavigation({
   return (
     <nav
       aria-label="Grupos de atendimento"
-      className="relative isolate grid grid-cols-3 rounded-[18px] border border-clinical-border/[0.16] bg-[rgb(var(--clinical-queue-bg))] p-1 shadow-[0_7px_0_rgba(16,31,43,0.035),0_12px_22px_rgba(16,31,43,0.12),inset_0_1px_0_rgba(255,255,255,0.38)]"
+      className="relative isolate grid grid-cols-4 rounded-[18px] border border-clinical-border/[0.16] bg-[rgb(var(--clinical-queue-bg))] p-1 shadow-[0_7px_0_rgba(16,31,43,0.035),0_12px_22px_rgba(16,31,43,0.12),inset_0_1px_0_rgba(255,255,255,0.38)]"
     >
       <span
         aria-hidden="true"
-        className="pointer-events-none absolute bottom-1 left-1 top-1 z-0 w-[calc((100%_-_0.5rem)_/_3)] rounded-[13px] border border-clinical-border/[0.10] bg-[rgb(var(--clinical-queue-selected))] shadow-[0_4px_8px_rgba(16,31,43,0.08),inset_0_1px_0_rgba(255,255,255,0.38)] transition-transform duration-[240ms] ease-[cubic-bezier(0.2,0,0,1)] motion-reduce:transition-none"
+        className="pointer-events-none absolute bottom-1 left-1 top-1 z-0 w-[calc((100%_-_0.5rem)_/_4)] rounded-[13px] border border-clinical-border/[0.10] bg-[rgb(var(--clinical-queue-selected))] shadow-[0_4px_8px_rgba(16,31,43,0.08),inset_0_1px_0_rgba(255,255,255,0.38)] transition-transform duration-[240ms] ease-[cubic-bezier(0.2,0,0,1)] motion-reduce:transition-none"
         style={{ transform: `translateX(${activeIndex * 100}%)` }}
       />
       {queueGroupDefinitions.map((item) => {
@@ -756,12 +802,12 @@ function QueueGroupNavigation({
             aria-label={`${item.id}, ${count} ${count === 1 ? "atendimento" : "atendimentos"}`}
             onClick={() => onChange(item.id)}
             className={cn(
-              "relative z-10 flex min-w-0 flex-col items-center justify-center gap-0.5 rounded-xl px-1 pb-1.5 pt-1 text-[10px] font-extrabold leading-4 transition-colors duration-200 ease-out focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-clinical-blue/50 focus-visible:ring-offset-2 focus-visible:ring-offset-clinical-surface motion-reduce:transition-none sm:text-[11px]",
+              "relative z-10 flex min-w-0 flex-col items-center justify-center gap-0.5 rounded-xl px-0.5 pb-1.5 pt-1 text-[10px] font-extrabold leading-4 transition-colors duration-200 ease-out focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-clinical-blue/50 focus-visible:ring-offset-2 focus-visible:ring-offset-clinical-surface motion-reduce:transition-none lg:text-[11px]",
               active ? "text-clinical-dark" : "text-clinical-muted hover:text-clinical-dark"
             )}
           >
             <Icon className={cn("size-3.5 transition-transform duration-200 ease-out motion-reduce:transition-none", item.tone, active && "scale-110")} aria-hidden="true" />
-            <span className="max-w-full truncate">{item.id}</span>
+            <span className="max-w-full truncate tracking-tight lg:tracking-normal" title={item.id}>{item.id}</span>
             <span className={cn("absolute right-1 top-1 flex h-[17px] min-w-[17px] items-center justify-center rounded-full px-1 text-[9px] font-black leading-none tabular-nums transition-colors duration-200", active ? item.badge : "bg-[rgb(var(--clinical-queue-selected))] text-clinical-muted")}>
               {count}
             </span>
@@ -769,6 +815,129 @@ function QueueGroupNavigation({
         );
       })}
     </nav>
+  );
+}
+
+function SectorAccordion({
+  bucket,
+  index,
+  open,
+  onToggle,
+  view,
+  selectedId,
+  onSelect,
+  showBreakdown
+}: {
+  bucket: SectorBucket;
+  index: number;
+  open: boolean;
+  onToggle: () => void;
+  view: ViewMode;
+  selectedId: string;
+  onSelect: (id: string) => void;
+  showBreakdown: boolean;
+}) {
+  const color = bucket.color;
+  const count = bucket.rows.length;
+  const unread = bucket.rows.reduce((sum, row) => sum + row.unread, 0);
+  const breakdown = showBreakdown
+    ? {
+        Atendendo: bucket.rows.filter((row) => getQueueGroup(row.status) === "Atendendo").length,
+        Aguardando: bucket.rows.filter((row) => getQueueGroup(row.status) === "Aguardando").length,
+        Resolvidos: bucket.rows.filter((row) => getQueueGroup(row.status) === "Resolvidos").length
+      }
+    : null;
+  const panelId = `sector-panel-${bucket.key}`;
+
+  return (
+    <section
+      className={cn(
+        "animate-list-in motion-reduce:animate-none overflow-hidden rounded-2xl border transition-colors duration-300 motion-reduce:transition-none",
+        open ? "border-clinical-border/[0.20] bg-clinical-surface/60" : "border-clinical-border/[0.12] bg-clinical-surfaceMuted/25"
+      )}
+      style={{
+        animationDelay: `${Math.min(index, 6) * 45}ms`,
+        borderColor: open && color ? `${color}59` : undefined,
+        background: color ? `linear-gradient(180deg, ${color}${open ? "17" : "0A"}, ${color}03)` : undefined
+      }}
+    >
+      <button
+        type="button"
+        onClick={onToggle}
+        aria-expanded={open}
+        aria-controls={panelId}
+        aria-label={`${bucket.name}, ${count} ${count === 1 ? "atendimento" : "atendimentos"}`}
+        className="group relative flex w-full items-center gap-2.5 rounded-2xl px-2.5 py-2.5 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-clinical-blue/50"
+      >
+        <span aria-hidden="true" className="absolute inset-0 rounded-2xl bg-clinical-dark/[0.03] opacity-0 transition-opacity duration-200 group-hover:opacity-100 motion-reduce:transition-none dark:bg-white/[0.05]" />
+        <span
+          aria-hidden="true"
+          className={cn("relative flex size-7 shrink-0 items-center justify-center rounded-[10px] border", !color && "border-clinical-border/[0.14] bg-clinical-surfaceMuted/70")}
+          style={color ? { backgroundColor: `${color}1C`, borderColor: `${color}42` } : undefined}
+        >
+          {color ? (
+            <span
+              className="size-2.5 rounded-full transition-shadow duration-300 motion-reduce:transition-none"
+              style={{ backgroundColor: color, boxShadow: open ? `0 0 10px ${color}B3` : `0 0 0 ${color}00` }}
+            />
+          ) : (
+            <Inbox className="size-3.5 text-clinical-muted" />
+          )}
+        </span>
+        <span className="relative min-w-0 flex-1">
+          <span className="flex items-center gap-1.5">
+            <span className={cn("truncate text-[13px] font-extrabold", count ? "text-clinical-dark" : "text-clinical-muted")} title={bucket.name}>{bucket.name}</span>
+            {unread > 0 ? <span className="animate-idle-breathe size-1.5 shrink-0 rounded-full bg-clinical-blue" title={`${unread} ${unread === 1 ? "mensagem não lida" : "mensagens não lidas"}`} /> : null}
+          </span>
+          {breakdown ? (
+            <span className="mt-0.5 flex items-center gap-2.5 text-[10px] font-bold tabular-nums text-clinical-muted">
+              <span className="flex items-center gap-1" title={`${breakdown.Atendendo} atendendo`}><span className="size-1.5 rounded-full bg-clinical-blue" />{breakdown.Atendendo}</span>
+              <span className="flex items-center gap-1" title={`${breakdown.Aguardando} aguardando`}><span className="size-1.5 rounded-full bg-clinical-orange" />{breakdown.Aguardando}</span>
+              <span className="flex items-center gap-1" title={`${breakdown.Resolvidos} resolvidos`}><span className="size-1.5 rounded-full bg-clinical-green" />{breakdown.Resolvidos}</span>
+            </span>
+          ) : null}
+        </span>
+        <span
+          className={cn(
+            "relative flex h-6 min-w-6 shrink-0 items-center justify-center rounded-full px-1.5 text-[11px] font-black tabular-nums transition-colors duration-300 motion-reduce:transition-none",
+            !count && "bg-clinical-surfaceMuted/70 text-clinical-muted"
+          )}
+          style={count ? (color ? { backgroundColor: `${color}26`, color } : { backgroundColor: "rgb(var(--clinical-surface-muted))", color: "rgb(var(--clinical-slate))" }) : undefined}
+        >
+          {count}
+        </span>
+        <ChevronDown className={cn("relative size-4 shrink-0 text-clinical-muted transition-transform duration-300 ease-[cubic-bezier(0.2,0,0,1)] motion-reduce:transition-none", open && "rotate-180")} aria-hidden="true" />
+      </button>
+      <div
+        id={panelId}
+        inert={!open}
+        aria-hidden={!open}
+        className={cn(
+          "grid transition-[grid-template-rows,opacity,visibility] duration-300 ease-[cubic-bezier(0.2,0,0,1)] motion-reduce:transition-none",
+          open ? "visible grid-rows-[1fr] opacity-100" : "invisible grid-rows-[0fr] opacity-0"
+        )}
+      >
+        <div className="min-h-0 overflow-hidden">
+          <div className="px-1.5 pb-1.5">
+            {count === 0 ? (
+              <p className="px-3 py-3 text-center text-[11px] font-semibold text-clinical-muted">Nenhum atendimento neste setor com os filtros atuais.</p>
+            ) : view === "lista" ? (
+              <div className="space-y-1">
+                {bucket.rows.map((attendance, rowIndex) => (
+                  <AttendanceRow key={open ? attendance.id : `${attendance.id}-closed`} index={rowIndex} attendance={attendance} active={attendance.id === selectedId} onSelect={() => onSelect(attendance.id)} />
+                ))}
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 xl:grid-cols-1 2xl:grid-cols-2">
+                {bucket.rows.map((attendance, rowIndex) => (
+                  <AttendanceCard key={open ? attendance.id : `${attendance.id}-closed`} index={rowIndex} attendance={attendance} active={attendance.id === selectedId} onSelect={() => onSelect(attendance.id)} />
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    </section>
   );
 }
 
@@ -844,18 +1013,18 @@ function ChatPane({
             <Avatar name={attendance.patientName} status={online ? "online" : "offline"} />
             <span className="min-w-0">
               <span className="block truncate text-sm font-extrabold text-clinical-dark">{attendance.patientName}</span>
-              <span className="mt-0.5 flex items-center gap-1.5 text-[11px] font-bold text-clinical-muted">
+              <span className="mt-0.5 flex min-w-0 items-center gap-1.5 text-[11px] font-bold text-clinical-muted">
                 <ChannelIcon channel={attendance.channel} />
-                <span className={cn(online && "text-clinical-green")}>{online ? "online" : "na fila"}</span>
-                <span aria-hidden="true">·</span>
-                <span>{attendance.id}</span>
+                <span className={cn("shrink-0", online && "text-clinical-green")}>{online ? "online" : "na fila"}</span>
+                <span aria-hidden="true" className="shrink-0">·</span>
+                <span className="truncate">{attendance.id}</span>
               </span>
             </span>
           </button>
         </div>
         <div className="flex shrink-0 items-center gap-1">
-          <button type="button" onClick={onPhone} disabled={closed} className="hidden size-9 items-center justify-center rounded-xl text-clinical-muted transition hover:bg-clinical-surfaceMuted/70 hover:text-clinical-blue disabled:cursor-not-allowed disabled:opacity-40 sm:flex" aria-label="Ligar para o paciente" title={closed ? "Ação indisponível em atendimento encerrado" : "Ligar para o paciente"}><Phone className="size-4" /></button>
-          <button type="button" onClick={onVideo} disabled={closed} className="hidden size-9 items-center justify-center rounded-xl text-clinical-muted transition hover:bg-clinical-surfaceMuted/70 hover:text-clinical-blue disabled:cursor-not-allowed disabled:opacity-40 sm:flex" aria-label="Iniciar videochamada" title={closed ? "Ação indisponível em atendimento encerrado" : "Iniciar videochamada"}><Video className="size-4" /></button>
+          <button type="button" onClick={onPhone} disabled={closed} className="hidden size-9 items-center justify-center rounded-xl text-clinical-muted transition hover:bg-clinical-surfaceMuted/70 hover:text-clinical-blue disabled:cursor-not-allowed disabled:opacity-40 lg:flex" aria-label="Ligar para o paciente" title={closed ? "Ação indisponível em atendimento encerrado" : "Ligar para o paciente"}><Phone className="size-4" /></button>
+          <button type="button" onClick={onVideo} disabled={closed} className="hidden size-9 items-center justify-center rounded-xl text-clinical-muted transition hover:bg-clinical-surfaceMuted/70 hover:text-clinical-blue disabled:cursor-not-allowed disabled:opacity-40 lg:flex" aria-label="Iniciar videochamada" title={closed ? "Ação indisponível em atendimento encerrado" : "Iniciar videochamada"}><Video className="size-4" /></button>
           <div className="relative">
             <button type="button" onClick={() => setMenuOpen((current) => !current)} aria-expanded={menuOpen} aria-haspopup="menu" className="flex size-9 items-center justify-center rounded-xl text-clinical-muted transition hover:bg-clinical-surfaceMuted/70 hover:text-clinical-blue" aria-label="Mais opções"><MoreVertical className="size-4" /></button>
             {menuOpen ? (
@@ -867,9 +1036,9 @@ function ChatPane({
             ) : null}
           </div>
           {closed ? (
-            <Button type="button" size="sm" onClick={onReopen}><UserRoundCheck className="size-4" />Reabrir</Button>
+            <Button type="button" size="sm" onClick={onReopen} aria-label="Reabrir atendimento"><UserRoundCheck className="size-4" /><span className="hidden max-md:inline lg:inline">Reabrir</span></Button>
           ) : attendance.source !== "Humano" ? (
-            <Button type="button" size="sm" onClick={onAssume}><UserRoundCheck className="size-4" />Assumir</Button>
+            <Button type="button" size="sm" onClick={onAssume} aria-label="Assumir atendimento"><UserRoundCheck className="size-4" /><span className="hidden max-md:inline lg:inline">Assumir</span></Button>
           ) : null}
           <button type="button" onClick={onTransfer} disabled={closed} className="flex size-9 items-center justify-center rounded-xl border border-clinical-border/[0.12] text-clinical-muted transition hover:border-clinical-blue/25 hover:text-clinical-blue disabled:cursor-not-allowed disabled:opacity-40" aria-label="Transferir atendimento" title={closed ? "Ação indisponível em atendimento encerrado" : "Transferir atendimento"}>
             <Send className="size-4" />
