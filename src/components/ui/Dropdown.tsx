@@ -60,6 +60,7 @@ export function Dropdown({ label, value, options, onChange, className }: Dropdow
         onClick={() => setOpen((current) => !current)}
         aria-haspopup="listbox"
         aria-expanded={open}
+        aria-label={label}
         className={cn(
           "flex h-11 w-full items-center justify-between gap-2 rounded-2xl border px-3.5 text-[14px] font-bold transition duration-300 focus:outline-none focus:ring-2 focus:ring-clinical-blue/25",
           open
@@ -77,7 +78,7 @@ export function Dropdown({ label, value, options, onChange, className }: Dropdow
             <div
               ref={menuRef}
               role="listbox"
-              aria-label={label}
+              aria-label={`Opções de ${label}`}
               onKeyDown={(event) => { if (event.key === "Escape") setOpen(false); }}
               style={{ position: "fixed", top: coords.top, left: coords.left, zIndex: 9999 }}
               className="min-w-[190px] origin-top rounded-2xl border border-clinical-border/[0.14] bg-clinical-surface/95 p-2 shadow-clinical backdrop-blur-xl dark:border-white/[0.08]"
